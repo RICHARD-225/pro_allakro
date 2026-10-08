@@ -1,0 +1,147 @@
+// Client HTTP centralisé pour l'API Django REST.
+// - Les jetons JWT sont dans des cookies httpOnly, gérés par le navigateur (credentials: 'include').
+// - Un 401 déclenche un rafraîchissement automatique de la session puis rejoue la requête une fois.
+// - Les erreurs de validation du serveur sont exposées champ par champ (ApiError.fields).
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+
+// Requêtes qui ne doivent pas déclencher de rafraîchissement de session
+const SANS_RAFRAICHISSEMENT = ['/auth/login/', '/auth/refresh/', '/auth/logout/'];
+
+let onUnauthorized = null;
+export function setUnauthorizedHandler(handler) {
+  onUnauthorized = handler;
+}
+
+const firstMessage = (value) => {
+  if (Array.isArray(value)) return firstMessage(value[0]);
+  if (value && typeof value === 'object') return firstMessage(Object.values(value)[0]);
+  return value == null ? '' : String(value);
+};
+
+// { champ: ['msg'] } -> { champ: 'msg' } ; les listes d'objets (ex. lignes) restent des listes
+function fieldErrors(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+  const out = {};
+  Object.entries(data).forEach(([key, value]) => {
+    if (key === 'detail' || key === 'non_field_errors') return;
+    out[key] = Array.isArray(value) && value.some((v) => v && typeof v === 'object')
+      ? value.map((v) => fieldErrors(v))
+      : firstMessage(value);
+  });
+  return out;
+}
+
+function messageOf(data, status) {
+  if (data?.detail) return firstMessage(data.detail);
+  if (data?.non_field_errors) return firstMessage(data.non_field_errors);
+  if (status === 400) return 'Certaines informations sont invalides : vérifiez le formulaire.';
+  if (status === 401) return 'Votre session a expiré, reconnectez-vous.';
+  if (status === 403) return "Vous n'avez pas les droits pour cette action.";
+  if (status === 404) return 'Élément introuvable.';
+  if (status >= 500) return 'Erreur du serveur. Réessayez plus tard.';
+  return `Erreur ${status}`;
+}
+
+export class ApiError extends Error {
+  constructor(message, status, data) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.data = data;
+    this.fields = fieldErrors(data);
+  }
+}
+
+// Les identifiants sont manipulés en chaînes côté interface (valeurs des listes déroulantes)
+const isIdKey = (key) => key === 'id' || key.endsWith('_id') || key.endsWith('_ids');
+function normalize(value, key = '') {
+  if (Array.isArray(value)) return value.map((v) => normalize(v, key));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, normalize(v, k)]));
+  }
+  if (typeof value === 'number' && isIdKey(key)) return String(value);
+  return value;
+}
+
+function buildUrl(path, params) {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') query.append(key, value);
+  });
+  const qs = query.toString();
+  return `${API_BASE_URL}${path}${qs ? `?${qs}` : ''}`;
+}
+
+let refreshing = null;
+function refreshSession() {
+  if (!refreshing) {
+    refreshing = fetch(`${API_BASE_URL}/auth/refresh/`, { method: 'POST', credentials: 'include' })
+      .then((response) => response.ok)
+      .catch(() => false)
+      .finally(() => { setTimeout(() => { refreshing = null; }, 0); });
+  }
+  return refreshing;
+}
+
+async function request(path, { method = 'GET', body, params, retry = true } = {}) {
+  let response;
+  try {
+    response = await fetch(buildUrl(path, params), {
+      method,
+      credentials: 'include',
+      headers: body !== undefined ? { 'Content-Type': 'application/json', Accept: 'application/json' } : { Accept: 'application/json' },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new ApiError('Impossible de joindre le serveur. Vérifiez votre connexion.', 0, null);
+  }
+
+  if (response.status === 401 && retry && !SANS_RAFRAICHISSEMENT.includes(path)) {
+    if (await refreshSession()) return request(path, { method, body, params, retry: false });
+    onUnauthorized?.();
+  }
+
+  const data = response.status === 204 ? null : await response.json().catch(() => null);
+  if (!response.ok) throw new ApiError(messageOf(data, response.status), response.status, data);
+  return normalize(data);
+}
+
+// Téléchargement d'un fichier généré par le serveur (rapport Excel)
+async function download(path, params, retry = true) {
+  let response;
+  try {
+    response = await fetch(buildUrl(path, params), { credentials: 'include', headers: { Accept: '*/*' } });
+  } catch {
+    throw new ApiError('Impossible de joindre le serveur. Vérifiez votre connexion.', 0, null);
+  }
+  if (response.status === 401 && retry) {
+    if (await refreshSession()) return download(path, params, false);
+    onUnauthorized?.();
+  }
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new ApiError(messageOf(data, response.status), response.status, data);
+  }
+  const disposition = response.headers.get('Content-Disposition') || '';
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] || 'rapport.xlsx';
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return filename;
+}
+
+export const api = {
+  get: (path, params) => request(path, { params }),
+  post: (path, data) => request(path, { method: 'POST', body: data ?? {} }),
+  patch: (path, data) => request(path, { method: 'PATCH', body: data }),
+  delete: (path) => request(path, { method: 'DELETE' }),
+  download,
+};
+
+export default api;

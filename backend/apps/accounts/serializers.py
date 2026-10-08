@@ -1,0 +1,130 @@
+from django.contrib.auth.hashers import make_password
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework import serializers
+
+from apps.core import validators as v
+from apps.core.models import Personne
+
+from .models import Journal, RoleUtilisateur, Utilisateur
+
+
+class LoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+
+
+class ChangementMotDePasseSerializer(serializers.Serializer):
+    ancien_mot_de_passe = serializers.CharField(write_only=True)
+    nouveau_mot_de_passe = serializers.CharField(write_only=True)
+    confirmation = serializers.CharField(write_only=True)
+
+    def validate_ancien_mot_de_passe(self, value):
+        from django.contrib.auth.hashers import check_password
+        if not check_password(value, self.context['request'].user.password_hash):
+            raise serializers.ValidationError('Mot de passe actuel incorrect.')
+        return value
+
+    def validate(self, attrs):
+        nouveau = attrs['nouveau_mot_de_passe']
+        if nouveau != attrs['confirmation']:
+            raise serializers.ValidationError({'confirmation': 'La confirmation ne correspond pas au nouveau mot de passe.'})
+        if nouveau == attrs['ancien_mot_de_passe']:
+            raise serializers.ValidationError({'nouveau_mot_de_passe': "Le nouveau mot de passe doit être différent de l'actuel."})
+        try:
+            validate_password(nouveau)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({'nouveau_mot_de_passe': list(exc.messages)})
+        return attrs
+
+    def save(self):
+        user = self.context['request'].user
+        user.password_hash = make_password(self.validated_data['nouveau_mot_de_passe'])
+        user.save(update_fields=['password_hash'])
+        return user
+
+
+class MeSerializer(serializers.ModelSerializer):
+    """Profil de l'utilisateur connecté, au format attendu par le frontend."""
+
+    email = serializers.CharField(source='username')
+    name = serializers.CharField(source='personne.nom_complet')
+    role = serializers.CharField(source='role.code')
+    role_libelle = serializers.CharField(source='role.libelle')
+    personne_id = serializers.IntegerField()
+
+    class Meta:
+        model = Utilisateur
+        fields = ['id', 'username', 'email', 'name', 'role', 'role_libelle', 'personne_id', 'derniere_connexion']
+
+
+class RoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RoleUtilisateur
+        fields = ['id', 'code', 'libelle']
+
+
+class UtilisateurSerializer(serializers.ModelSerializer):
+    personne_id = v.RelatedField(source='personne', queryset=Personne.objects.all())
+    nom = serializers.CharField(source='personne.nom_complet', read_only=True)
+    email = serializers.EmailField(source='username')
+    role = serializers.SlugRelatedField(slug_field='code', queryset=RoleUtilisateur.objects.all(),
+                                        error_messages={'does_not_exist': 'Rôle inconnu.'})
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True, style={'input_type': 'password'})
+
+    class Meta:
+        model = Utilisateur
+        fields = ['id', 'personne_id', 'nom', 'email', 'role', 'actif', 'derniere_connexion', 'password']
+        read_only_fields = ['derniere_connexion']
+
+    def validate_email(self, value):
+        value = value.strip().lower()
+        return v.unique_insensible(Utilisateur.objects, 'username', value, self.instance, 'Cet e-mail est déjà utilisé.')
+
+    def validate_personne_id(self, personne):
+        compte = Utilisateur.objects.filter(personne=personne)
+        if self.instance:
+            compte = compte.exclude(pk=self.instance.pk)
+        if compte.exists():
+            raise serializers.ValidationError('Cette personne a déjà un compte utilisateur.')
+        return v.actif(personne, 'Cette personne')
+
+    def validate(self, attrs):
+        password = attrs.get('password')
+        if self.instance is None and not password:
+            raise serializers.ValidationError({'password': 'Le mot de passe est obligatoire.'})
+        if password:
+            try:
+                validate_password(password)
+            except DjangoValidationError as exc:
+                raise serializers.ValidationError({'password': list(exc.messages)})
+        request = self.context.get('request')
+        if self.instance and request and request.user.pk == self.instance.pk:
+            if attrs.get('actif') is False:
+                raise serializers.ValidationError({'actif': 'Vous ne pouvez pas désactiver votre propre compte.'})
+            if 'role' in attrs and attrs['role'].code != RoleUtilisateur.BIG_BOSS:
+                raise serializers.ValidationError({'role': 'Vous ne pouvez pas retirer votre propre rôle Big Boss.'})
+        return attrs
+
+    def create(self, validated_data):
+        validated_data['password_hash'] = make_password(validated_data.pop('password'))
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        if password:
+            instance.password_hash = make_password(password)
+        return super().update(instance, validated_data)
+
+
+class JournalSerializer(serializers.ModelSerializer):
+    utilisateur = serializers.SerializerMethodField()
+    entite = serializers.CharField(source='table_concernee')
+    timestamp = serializers.DateTimeField(source='date_action')
+
+    class Meta:
+        model = Journal
+        fields = ['id', 'timestamp', 'utilisateur', 'action', 'entite', 'objet_id', 'details', 'adresse_ip']
+
+    def get_utilisateur(self, obj):
+        return obj.utilisateur.nom_complet if obj.utilisateur else 'Système'

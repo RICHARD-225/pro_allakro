@@ -1,0 +1,15 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+db.sqlite3
+node_modules/
+dist/
+.DS_Store
+*.log
+venv/
+env/
+.venv/
+ALLAKRO_DOC.md
+.claude/
+requirements.txt
