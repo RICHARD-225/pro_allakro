@@ -1,0 +1,19 @@
+# Dépendances d'ALLAKRO — versions figées (celles testées). Mise à jour : changer la version, relancer les tests et le contrôle de vulnérabilités
+# (pip install pip-audit && pip-audit -r backend/requirements.txt).
+Django==6.1.1
+djangorestframework==3.18.1
+django-cors-headers==4.9.0
+djangorestframework-simplejwt==5.5.1
+PyJWT==2.15.1
+python-decouple==3.8
+redis==8.1.0
+# Chiffrement des sauvegardes copiées hors de la machine (deploy/sauvegarde_postgres.py --chiffrer)
+cryptography==50.0.2
+psycopg2-binary==2.9.13
+XlsxWriter==3.2.9
+# Reçus PDF (paiements de salaires, achats aux particuliers)
+reportlab==5.0.1
+Pillow==12.3.0
+# Serveur d'application de production (Linux : gunicorn ; Windows : waitress)
+gunicorn==23.0.0; sys_platform != "win32"
+waitress==3.0.2; sys_platform == "win32"

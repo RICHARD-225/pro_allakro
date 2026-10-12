@@ -1,7 +1,15 @@
 from django.db import models
+from django.db.models import F, Func, Q, Value
+from django.db.models.functions import Lower
 from django.utils import timezone
 
-from .utils import AutoCodeMixin
+from .utils import AutoCodeMixin, normaliser_espaces, normaliser_libelle
+
+
+def telephone_normalise_sql():
+    """Téléphone réduit à ses chiffres (et +) en SQL : « 07 01 23 45 67 » et « 0701234567 » sont le même numéro."""
+    return Func(F("telephone"), Value("[^0-9+]"), Value(""), Value("g"),
+                function="REGEXP_REPLACE", output_field=models.CharField())
 
 
 class Plantation(AutoCodeMixin, models.Model):
@@ -20,6 +28,7 @@ class Plantation(AutoCodeMixin, models.Model):
     class Meta:
         db_table = "plantation"
         ordering = ["nom"]
+        constraints = [models.CheckConstraint(condition=models.Q(superficie__gte=0), name="ck_plantation_superficie_positive")]
 
     def __str__(self):
         return self.nom
@@ -49,6 +58,7 @@ class Campement(AutoCodeMixin, models.Model):
     class Meta:
         db_table = "campement"
         ordering = ["nom"]
+        constraints = [models.CheckConstraint(condition=models.Q(superficie__gte=0), name="ck_campement_superficie_positive")]
 
     def __str__(self):
         return self.nom
@@ -62,6 +72,8 @@ class Bloc(AutoCodeMixin, models.Model):
     nom = models.CharField(max_length=150)
     superficie = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     unite_superficie = models.CharField(max_length=30, default="ha")
+    # Nombre de plantes présentes sur la superficie du bloc
+    nombre_plantes = models.PositiveIntegerField(default=0)
     description = models.TextField(blank=True)
     actif = models.BooleanField(default=True)
     date_creation = models.DateTimeField(auto_now_add=True)
@@ -71,6 +83,7 @@ class Bloc(AutoCodeMixin, models.Model):
         db_table = "bloc"
         ordering = ["code"]
         indexes = [models.Index(fields=["campement"], name="idx_bloc_campement")]
+        constraints = [models.CheckConstraint(condition=models.Q(superficie__gte=0), name="ck_bloc_superficie_positive")]
 
     def __str__(self):
         return f"{self.code} - {self.nom}"
@@ -85,7 +98,8 @@ class Personne(AutoCodeMixin, models.Model):
     nom = models.CharField(max_length=100)
     prenom = models.CharField(max_length=100)
     telephone = models.CharField(max_length=30, blank=True)
-    # Campement de rattachement (déduit de l'équipe quand la personne en a une)
+    # Bloc d'affectation de la personne ; son campement est toujours celui du bloc
+    bloc = models.ForeignKey(Bloc, on_delete=models.PROTECT, null=True, blank=True, related_name="personnes")
     campement = models.ForeignKey(Campement, on_delete=models.PROTECT, null=True, blank=True, related_name="personnes")
     date_embauche = models.DateField(null=True, blank=True)
     actif = models.BooleanField(default=True)
@@ -101,21 +115,30 @@ class Personne(AutoCodeMixin, models.Model):
             models.Index(fields=["nom", "prenom"], name="idx_personne_nom"),
             models.Index(fields=["telephone"], name="idx_personne_tel"),
         ]
+        constraints = [
+            # Une personne n'existe qu'une fois : même nom et même prénom (sans tenir compte des majuscules)
+            models.UniqueConstraint(Lower("nom"), Lower("prenom"), name="uniq_personne_nom_prenom"),
+            # Un numéro de téléphone n'appartient qu'à une personne, quelle que soit sa mise en forme
+            models.UniqueConstraint(telephone_normalise_sql(), condition=~Q(telephone=""), name="uniq_personne_telephone"),
+        ]
 
     def __str__(self):
         return f"{self.prenom} {self.nom}"
+
+    def save(self, *args, **kwargs):
+        # Espaces normalisés : « Kouassi  Jean » et « Kouassi Jean » sont la même personne
+        self.nom = normaliser_espaces(self.nom)
+        self.prenom = normaliser_espaces(self.prenom)
+        self.telephone = normaliser_espaces(self.telephone)
+        if self.bloc_id:
+            self.campement_id = self.bloc.campement_id
+        super().save(*args, **kwargs)
 
     @property
     def nom_complet(self):
         return f"{self.prenom} {self.nom}"
 
-    # Les historiques peuvent être préchargés (to_attr) pour éviter les requêtes en boucle
-    def membership_actuel(self):
-        memberships = getattr(self, "memberships_actuels", None)
-        if memberships is None:
-            memberships = list(self.participations_equipes.filter(date_fin__isnull=True).select_related("equipe"))
-        return memberships[0] if memberships else None
-
+    # La fonction actuelle peut être préchargée (to_attr) pour éviter les requêtes en boucle
     def fonction_actuelle(self):
         fonctions = getattr(self, "fonctions_actuelles", None)
         if fonctions is None:
@@ -129,9 +152,17 @@ class Fonction(models.Model):
     class Meta:
         db_table = "fonction"
         ordering = ["libelle"]
+        constraints = [
+            # « Chef de chantier », « chef de chantier » et « CHEF DE CHANTIER » sont la même fonction
+            models.UniqueConstraint(Lower("libelle"), name="uniq_fonction_libelle_insensible"),
+        ]
 
     def __str__(self):
         return self.libelle
+
+    def save(self, *args, **kwargs):
+        self.libelle = normaliser_libelle(self.libelle)
+        super().save(*args, **kwargs)
 
 
 class PersonneFonction(models.Model):
@@ -148,6 +179,8 @@ class PersonneFonction(models.Model):
 
 
 class Equipe(AutoCodeMixin, models.Model):
+    """Équipe créée avec un travail (nom libre, chef choisi parmi les personnes du travail)."""
+
     code_prefix = "EQ-"
 
     chef = models.ForeignKey(Personne, on_delete=models.SET_NULL, null=True, blank=True, related_name="equipes_dirigees")
@@ -165,20 +198,10 @@ class Equipe(AutoCodeMixin, models.Model):
     def __str__(self):
         return self.nom
 
-    def affectation_actuelle(self):
-        affectations = getattr(self, "affectations_actuelles", None)
-        if affectations is None:
-            affectations = list(self.affectations_blocs.filter(date_fin__isnull=True).select_related("bloc__campement"))
-        return affectations[0] if affectations else None
-
-    def membres_actuels(self):
-        membres = getattr(self, "membres_en_cours", None)
-        if membres is None:
-            membres = list(self.membres.filter(date_fin__isnull=True))
-        return membres
-
 
 class MembreEquipe(models.Model):
+    """Historique des anciennes équipes permanentes (avant les équipes créées par travail), conservé en lecture seule."""
+
     personne = models.ForeignKey(Personne, on_delete=models.CASCADE, related_name="participations_equipes")
     equipe = models.ForeignKey(Equipe, on_delete=models.PROTECT, related_name="membres")
     date_debut = models.DateField(default=timezone.localdate)

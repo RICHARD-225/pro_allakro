@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     AffectationEquipeBlocViewSet, BlocViewSet, CampementViewSet, EquipeViewSet, FonctionViewSet,
-    MembreEquipeViewSet, PersonneViewSet, PlantationViewSet,
+    MembreEquipeViewSet, PersonneViewSet, PlantationViewSet, UnitesView,
 )
 
 router = DefaultRouter()
@@ -17,5 +17,6 @@ router.register(r'membres-equipe', MembreEquipeViewSet, basename='membre-equipe'
 router.register(r'affectations', AffectationEquipeBlocViewSet, basename='affectation')
 
 urlpatterns = [
+    path('unites/', UnitesView.as_view(), name='unites'),
     path('', include(router.urls)),
 ]

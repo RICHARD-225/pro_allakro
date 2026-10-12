@@ -25,6 +25,8 @@ class ProduitSerializer(serializers.ModelSerializer):
             'stock_calcule': float(stock),
             'status': 'low' if stock < instance.stock_minimum else 'ok',
             'valeur_stock': float(stock * instance.prix_unitaire),
+            # Annoncé dans la confirmation de suppression : le produit part avec ses mouvements
+            'nb_mouvements': getattr(instance, 'nb_mouvements', None) if hasattr(instance, 'nb_mouvements') else instance.mouvements.count(),
         })
         return data
 
@@ -90,4 +92,7 @@ class MouvementStockSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'quantite': [
                 f"Stock insuffisant : {stock.normalize():f} {produit.unite} disponible(s)."]})
         validated_data['produit'] = produit
-        return super().create(validated_data)
+        mouvement = super().create(validated_data)
+        from apps.accounts.notifications import alerte_stock
+        alerte_stock(produit, stock, stock + variation, getattr(self.context.get('request'), 'user', None))
+        return mouvement

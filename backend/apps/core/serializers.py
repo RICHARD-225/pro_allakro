@@ -8,6 +8,7 @@ from rest_framework import serializers
 from . import services
 from . import validators as v
 from .models import Bloc, Campement, Equipe, Fonction, Personne, Plantation
+from .utils import normaliser_espaces, normaliser_libelle
 
 
 def somme_superficies(queryset, exclude=None):
@@ -97,19 +98,40 @@ class BlocSerializer(serializers.ModelSerializer):
     campement_id = v.RelatedField(source='campement', queryset=Campement.objects.all())
     campement_nom = serializers.CharField(source='campement.nom', read_only=True)
     plantation_id = serializers.IntegerField(source='campement.plantation_id', read_only=True)
+    plantation_nom = serializers.CharField(source='campement.plantation.nom', read_only=True)
+    nb_personnes = serializers.IntegerField(read_only=True, default=0)
     created_at = serializers.DateTimeField(source='date_creation', read_only=True)
 
     class Meta:
         model = Bloc
-        fields = ['id', 'code', 'nom', 'campement_id', 'campement_nom', 'plantation_id', 'superficie',
-                  'unite_superficie', 'description', 'actif', 'created_at']
+        fields = ['id', 'code', 'nom', 'campement_id', 'campement_nom', 'plantation_id', 'plantation_nom', 'superficie',
+                  'unite_superficie', 'nombre_plantes', 'description', 'actif', 'nb_personnes', 'created_at']
         read_only_fields = ['code']
+        extra_kwargs = {
+            'nombre_plantes': {'required': True, 'error_messages': {
+                'required': 'Le nombre de plantes est obligatoire.', 'invalid': 'Nombre de plantes invalide.',
+                'min_value': 'Le nombre de plantes ne peut pas être négatif.',
+            }},
+        }
 
     def validate_nom(self, value):
         return v.texte_obligatoire(value, 'Le nom')
 
     def validate_superficie(self, value):
         return v.positif_ou_nul(value, 'La superficie')
+
+    def validate_nombre_plantes(self, value):
+        if value is None or value < 0:
+            raise serializers.ValidationError('Le nombre de plantes ne peut pas être négatif.')
+        if value > 100_000_000:
+            raise serializers.ValidationError('Nombre de plantes trop élevé : vérifiez la saisie.')
+        return value
+
+    def update(self, instance, validated_data):
+        bloc = super().update(instance, validated_data)
+        # Les personnes affectées au bloc suivent son campement
+        bloc.personnes.exclude(campement_id=bloc.campement_id).update(campement_id=bloc.campement_id)
+        return bloc
 
     def validate(self, attrs):
         campement = attrs.get('campement', getattr(self.instance, 'campement', None))
@@ -139,203 +161,130 @@ class BlocSerializer(serializers.ModelSerializer):
 
 
 class FonctionSerializer(serializers.ModelSerializer):
+    """Fonction saisie librement : espaces et majuscules normalisés, jamais deux fois la même."""
+
+    nb_personnes = serializers.IntegerField(read_only=True, default=0)
+
     class Meta:
         model = Fonction
-        fields = ['id', 'libelle']
+        fields = ['id', 'libelle', 'nb_personnes']
 
     def validate_libelle(self, value):
-        value = v.texte_obligatoire(value, 'Le libellé')
+        value = normaliser_libelle(v.texte_obligatoire(value, 'Le libellé'))
         return v.unique_insensible(Fonction.objects, 'libelle', value, self.instance, 'Cette fonction existe déjà.')
 
 
 class PersonneSerializer(serializers.ModelSerializer):
-    campement_id = v.RelatedField(source='campement', queryset=Campement.objects.all(), allow_null=True, required=False)
-    campement_nom = serializers.CharField(source='campement.nom', read_only=True, default=None)
-    # Champs « actuels » issus des historiques (fonction principale, équipe) : écrits ici, lus via to_representation
-    fonction_id = v.RelatedField(queryset=Fonction.objects.all(), write_only=True, required=False)
-    equipe_id = v.RelatedField(queryset=Equipe.objects.all(), write_only=True, required=False, allow_null=True)
+    """
+    Une personne est affectée à un bloc (son campement suit le bloc). Elle n'existe qu'une fois : nom + prénom
+    et téléphone sont uniques (contrôle ici avec un message clair, et contraintes PostgreSQL en dernier rempart).
+    """
+
+    bloc_id = v.RelatedField(source='bloc', queryset=Bloc.objects.select_related('campement__plantation'),
+                             required=False, allow_null=True)
+    campement_id = serializers.IntegerField(read_only=True)
+    # Fonction choisie dans la liste (fonction_id) ou saisie librement (fonction_libelle, créée si elle n'existe pas)
+    fonction_id = v.RelatedField(queryset=Fonction.objects.all(), write_only=True, required=False, allow_null=True)
+    fonction_libelle = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=100)
     created_at = serializers.DateTimeField(source='date_creation', read_only=True)
 
     class Meta:
         model = Personne
-        fields = ['id', 'matricule', 'nom', 'prenom', 'telephone', 'adresse', 'observation', 'actif',
-                  'date_embauche', 'campement_id', 'campement_nom', 'fonction_id', 'equipe_id', 'created_at']
+        fields = ['id', 'matricule', 'nom', 'prenom', 'telephone', 'adresse', 'observation', 'actif', 'date_embauche',
+                  'bloc_id', 'campement_id', 'fonction_id', 'fonction_libelle', 'created_at']
         read_only_fields = ['matricule']
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
         fonction = instance.fonction_actuelle()
-        membership = instance.membership_actuel()
-        bloc = services.bloc_de_personne(instance)
+        bloc = instance.bloc
+        campement = bloc.campement if bloc else instance.campement
         data.update({
             'fonction_id': fonction.pk if fonction else None,
             'fonction_libelle': fonction.libelle if fonction else None,
-            'equipe_id': membership.equipe_id if membership else None,
-            'equipe_nom': membership.equipe.nom if membership else None,
-            'bloc_id': bloc.pk if bloc else None,
             'bloc_code': bloc.code if bloc else None,
+            'bloc_nom': bloc.nom if bloc else None,
+            'campement_id': campement.pk if campement else None,
+            'campement_nom': campement.nom if campement else None,
+            'plantation_id': campement.plantation_id if campement else None,
+            'plantation_nom': campement.plantation.nom if campement else None,
         })
         return data
 
     def validate_nom(self, value):
-        return v.texte_obligatoire(value, 'Le nom')
+        return normaliser_espaces(v.texte_obligatoire(value, 'Le nom'))
 
     def validate_prenom(self, value):
-        return v.texte_obligatoire(value, 'Le prénom')
+        return normaliser_espaces(v.texte_obligatoire(value, 'Le prénom'))
 
     def validate_telephone(self, value):
         value = v.telephone(value)
-        if value:
-            doublon = Personne.objects.filter(telephone=value)
-            if self.instance:
-                doublon = doublon.exclude(pk=self.instance.pk)
-            doublon = doublon.first()
-            if doublon:
-                raise serializers.ValidationError(f"Numéro déjà attribué à {doublon.nom_complet} ({doublon.matricule}).")
+        doublon = services.telephone_attribue(value, exclure=self.instance)
+        if doublon:
+            raise serializers.ValidationError(f"Numéro déjà attribué à {doublon.nom_complet} ({doublon.matricule}).")
         return value
 
     def validate_date_embauche(self, value):
         return v.pas_dans_le_futur(value, "La date d'embauche")
 
     def validate(self, attrs):
-        if self.instance is None and not attrs.get('fonction_id'):
+        creation = self.instance is None
+        nom = attrs.get('nom', getattr(self.instance, 'nom', ''))
+        prenom = attrs.get('prenom', getattr(self.instance, 'prenom', ''))
+        doublon = services.personne_en_double(nom, prenom, exclure=self.instance)
+        if doublon:
+            raise serializers.ValidationError({'nom': (
+                f"Cette personne existe déjà : {doublon.nom_complet} ({doublon.matricule}). "
+                "Pour un homonyme, ajoutez un second prénom ou une initiale.")})
+
+        bloc = attrs.get('bloc', getattr(self.instance, 'bloc', None))
+        if bloc is None:
+            raise serializers.ValidationError({'bloc_id': 'Le bloc d\'affectation est obligatoire.'})
+        if 'bloc' in attrs and (creation or self.instance.bloc_id != bloc.pk):
+            v.actif(bloc, 'Ce bloc')
+
+        fonction = attrs.get('fonction_id')
+        libelle = normaliser_libelle(attrs.pop('fonction_libelle', '') or '')
+        if fonction is None and libelle:
+            attrs['fonction_libelle'] = libelle
+        if creation and fonction is None and not libelle:
             raise serializers.ValidationError({'fonction_id': 'La fonction est obligatoire.'})
-        equipe = attrs.get('equipe_id')
-        if equipe:
-            v.actif(equipe, "L'équipe choisie")
-            affectation = equipe.affectation_actuelle()
-            if affectation:
-                # Le campement est celui du bloc de l'équipe
-                attrs['campement'] = affectation.bloc.campement
-        campement = attrs.get('campement', getattr(self.instance, 'campement', None))
-        if campement is None:
-            raise serializers.ValidationError({'campement_id': 'Le campement est obligatoire (ou choisissez une équipe).'})
-        if 'campement' in attrs and (self.instance is None or self.instance.campement_id != campement.pk):
-            v.actif(campement, 'Ce campement')
         return attrs
 
     @transaction.atomic
     def create(self, validated_data):
-        fonction = validated_data.pop('fonction_id')
-        equipe = validated_data.pop('equipe_id', None)
+        fonction = services.resoudre_fonction(validated_data.pop('fonction_id', None), validated_data.pop('fonction_libelle', ''))
         validated_data.setdefault('date_embauche', timezone.localdate())
         personne = super().create(validated_data)
         services.definir_fonction(personne, fonction, personne.date_embauche)
-        if equipe:
-            services.affecter_a_equipe(personne, equipe)
         return personne
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        fonction = validated_data.pop('fonction_id', None)
-        has_equipe = 'equipe_id' in validated_data
-        equipe = validated_data.pop('equipe_id', None)
+        fonction = services.resoudre_fonction(validated_data.pop('fonction_id', None), validated_data.pop('fonction_libelle', ''))
         personne = super().update(instance, validated_data)
         if fonction:
             services.definir_fonction(personne, fonction)
-        if not personne.actif:
-            # Une personne désactivée quitte son équipe
-            services.retirer_de_son_equipe(personne)
-        elif has_equipe:
-            if equipe:
-                services.affecter_a_equipe(personne, equipe)
-            else:
-                services.retirer_de_son_equipe(personne)
-        services.oublier_cache(personne, 'memberships_actuels', 'fonctions_actuelles')
+        services.oublier_cache(personne, 'fonctions_actuelles')
         return personne
 
 
 class EquipeSerializer(serializers.ModelSerializer):
-    chef_id = v.RelatedField(source='chef', queryset=Personne.objects.all(), allow_null=True, required=False)
+    """Équipe créée avec un travail : lecture seule (elle se modifie depuis le travail)."""
+
+    chef_id = serializers.IntegerField(read_only=True)
     chef_nom = serializers.SerializerMethodField()
-    bloc_id = v.RelatedField(queryset=Bloc.objects.select_related('campement'), write_only=True, required=False)
-    membres_ids = serializers.ListField(child=v.RelatedField(queryset=Personne.objects.all()), write_only=True, required=False)
     created_at = serializers.DateTimeField(source='date_creation', read_only=True)
 
     class Meta:
         model = Equipe
-        fields = ['id', 'code', 'nom', 'actif', 'chef_id', 'chef_nom', 'bloc_id', 'membres_ids', 'created_at']
-        read_only_fields = ['code']
+        fields = ['id', 'code', 'nom', 'actif', 'chef_id', 'chef_nom', 'created_at']
 
     def get_chef_nom(self, obj):
         return obj.chef.nom_complet if obj.chef else None
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        affectation = instance.affectation_actuelle()
-        membres = instance.membres_actuels()
-        bloc = affectation.bloc if affectation else None
-        data.update({
-            'bloc_id': bloc.pk if bloc else None,
-            'bloc_code': bloc.code if bloc else None,
-            'campement_id': bloc.campement_id if bloc else None,
-            'campement_nom': bloc.campement.nom if bloc else None,
-            'membres_ids': [m.personne_id for m in membres],
-            'nb_membres': len(membres),
-        })
+        travaux = list(instance.travaux.all())
+        data['travaux_ids'] = [t.pk for t in travaux]
         return data
-
-    def validate_nom(self, value):
-        value = v.texte_obligatoire(value, 'Le nom')
-        return v.unique_insensible(Equipe.objects, 'nom', value, self.instance, 'Une équipe porte déjà ce nom.')
-
-    def validate(self, attrs):
-        creation = self.instance is None
-        bloc = attrs.get('bloc_id')
-        if creation and not bloc:
-            raise serializers.ValidationError({'bloc_id': 'Le bloc affecté est obligatoire.'})
-        if bloc:
-            v.actif(bloc, 'Ce bloc')
-
-        membres = attrs.get('membres_ids')
-        if creation and not membres:
-            raise serializers.ValidationError({'membres_ids': 'Ajoutez au moins un membre.'})
-        if membres is not None:
-            if len({m.pk for m in membres}) != len(membres):
-                raise serializers.ValidationError({'membres_ids': 'Un membre apparaît plusieurs fois.'})
-            inactifs = [m.nom_complet for m in membres if not m.actif]
-            if inactifs:
-                raise serializers.ValidationError({'membres_ids': f"Personne(s) désactivée(s) : {', '.join(inactifs)}."})
-
-        chef = attrs.get('chef', getattr(self.instance, 'chef', None))
-        if creation and not chef:
-            raise serializers.ValidationError({'chef_id': "Désignez le chef d'équipe."})
-        if chef:
-            v.actif(chef, 'Le chef choisi')
-            membres_finaux = {m.pk for m in membres} if membres is not None else (
-                {m.personne_id for m in self.instance.membres_actuels()} if self.instance else set())
-            if chef.pk not in membres_finaux:
-                raise serializers.ValidationError({'chef_id': "Le chef doit faire partie des membres de l'équipe."})
-        return attrs
-
-    @transaction.atomic
-    def create(self, validated_data):
-        bloc = validated_data.pop('bloc_id')
-        membres = validated_data.pop('membres_ids')
-        equipe = super().create(validated_data)
-        services.affecter_bloc(equipe, bloc)
-        services.definir_membres(equipe, membres)
-        # Le chef a pu être retiré d'une autre équipe pendant l'affectation : on le réaffirme ici
-        Equipe.objects.filter(pk=equipe.pk).update(chef=validated_data.get('chef'))
-        equipe.refresh_from_db()
-        return equipe
-
-    @transaction.atomic
-    def update(self, instance, validated_data):
-        bloc = validated_data.pop('bloc_id', None)
-        membres = validated_data.pop('membres_ids', None)
-        chef = validated_data.get('chef', instance.chef)
-        equipe = super().update(instance, validated_data)
-        if bloc:
-            services.affecter_bloc(equipe, bloc)
-        if membres is not None:
-            services.definir_membres(equipe, membres)
-        if not equipe.actif:
-            # Une équipe désactivée libère ses membres et son bloc
-            services.definir_membres(equipe, [])
-            services.liberer_bloc(equipe)
-            chef = None
-        Equipe.objects.filter(pk=equipe.pk).update(chef=chef)
-        equipe.refresh_from_db()
-        services.oublier_cache(equipe, 'affectations_actuelles', 'membres_en_cours')
-        return equipe

@@ -11,9 +11,11 @@ CENT = Decimal("0.01")
 
 class CategorieDepense(AutoCodeMixin, models.Model):
     code_prefix = "CAT-"
-    # Catégorie système alimentée automatiquement par les achats aux particuliers
+    # Catégories système alimentées automatiquement (achats aux particuliers, paiements des salaires)
     CODE_ACHAT_PARTICULIERS = "CAT-ACH"
     LIBELLE_ACHAT_PARTICULIERS = "Achat de produits particuliers"
+    CODE_SALAIRES = "CAT-SAL"
+    LIBELLE_SALAIRES = "Salaires et rémunérations"
 
     code = models.CharField(max_length=50, unique=True, blank=True)
     libelle = models.CharField(max_length=150)
@@ -28,13 +30,20 @@ class CategorieDepense(AutoCodeMixin, models.Model):
 
     @property
     def systeme(self):
-        return self.code == self.CODE_ACHAT_PARTICULIERS
+        return self.code in (self.CODE_ACHAT_PARTICULIERS, self.CODE_SALAIRES)
 
     @classmethod
     def achat_particuliers(cls):
         categorie, _ = cls.objects.get_or_create(
             code=cls.CODE_ACHAT_PARTICULIERS,
             defaults={"libelle": cls.LIBELLE_ACHAT_PARTICULIERS, "actif": True},
+        )
+        return categorie
+
+    @classmethod
+    def salaires(cls):
+        categorie, _ = cls.objects.get_or_create(
+            code=cls.CODE_SALAIRES, defaults={"libelle": cls.LIBELLE_SALAIRES, "actif": True},
         )
         return categorie
 
@@ -56,16 +65,16 @@ class Tiers(models.Model):
 
 
 class Depense(models.Model):
+    # Une dépense est « Payée », ou « Avance » tant que la rémunération (ou l'achat) qu'elle règle n'est pas soldé(e)
     class Statut(models.TextChoices):
-        NON_PAYEE = 'NON_PAYEE', 'Non payée'
-        PARTIELLE = 'PARTIELLE', 'Partiellement payée'
+        AVANCE = 'AVANCE', 'Avance'
         PAYEE = 'PAYEE', 'Payée'
 
     campement = models.ForeignKey(Campement, on_delete=models.PROTECT, related_name="depenses")
     statut = models.CharField(
         max_length=15,
         choices=Statut.choices,
-        default=Statut.NON_PAYEE
+        default=Statut.PAYEE
     )
     bloc = models.ForeignKey(Bloc, on_delete=models.PROTECT, null=True, blank=True, related_name="depenses")
     categorie = models.ForeignKey(CategorieDepense, on_delete=models.PROTECT, related_name="depenses")
@@ -88,6 +97,10 @@ class Depense(models.Model):
         indexes = [
             models.Index(fields=["campement", "date_depense"], name="idx_depense_camp_date"),
             models.Index(fields=["bloc", "date_depense"], name="idx_depense_bloc_date"),
+        ]
+        constraints = [
+            models.CheckConstraint(condition=models.Q(montant_total__gte=0), name="ck_depense_montant_positif"),
+            models.CheckConstraint(condition=models.Q(quantite__gte=0, prix_unitaire__gte=0), name="ck_depense_qte_prix_positifs"),
         ]
 
     def __str__(self):
@@ -137,14 +150,23 @@ class RegleRemuneration(models.Model):
 
 
 class Salaire(models.Model):
-    """Rémunération d'une personne sur une période (un mois)."""
+    """
+    Rémunération à payer : générée par un travail (montant du travail, personne = chef ou personne seule),
+    ou saisie manuellement pour une personne sur un mois.
+    """
 
     personne = models.ForeignKey(Personne, on_delete=models.PROTECT, related_name="salaires")
+    travail = models.OneToOneField("exploitation.Travail", on_delete=models.PROTECT, null=True, blank=True,
+                                   related_name="remuneration")
+    bloc = models.ForeignKey(Bloc, on_delete=models.SET_NULL, null=True, blank=True, related_name="salaires")
+    libelle = models.CharField(max_length=255, blank=True)
     date_debut = models.DateField()
     date_fin = models.DateField()
     montant_brut = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     montant_ponction = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     montant_net = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    # Annulation d'une rémunération saisie manuellement (celle d'un travail suit l'annulation du travail)
+    annulee = models.BooleanField(default=False)
     observation = models.TextField(blank=True)
     date_creation = models.DateTimeField(auto_now_add=True)
 
@@ -153,8 +175,17 @@ class Salaire(models.Model):
         ordering = ["-date_debut", "personne__nom"]
         indexes = [models.Index(fields=["personne", "date_debut", "date_fin"], name="idx_salaire_personne_periode")]
         constraints = [
-            models.UniqueConstraint(fields=["personne", "date_debut", "date_fin"], name="uniq_salaire_personne_periode"),
+            # Une seule rémunération manuelle par personne et par mois (celles des travaux sont uniques par travail)
+            models.UniqueConstraint(fields=["personne", "date_debut"], condition=models.Q(travail__isnull=True),
+                                    name="uniq_salaire_manuel_personne_periode"),
+            models.CheckConstraint(condition=models.Q(montant_brut__gte=0, montant_ponction__gte=0, montant_net__gte=0),
+                                   name="ck_salaire_montants_positifs"),
+            models.CheckConstraint(condition=models.Q(date_fin__gte=models.F("date_debut")), name="ck_salaire_dates_coherentes"),
         ]
+
+    @property
+    def est_annulee(self):
+        return self.annulee or bool(self.travail_id and self.travail.statut == "ANNULE")
 
     @property
     def periode(self):
@@ -180,30 +211,73 @@ class LigneSalaire(models.Model):
         db_table = "ligne_salaire"
 
 
-class PaiementSalaire(models.Model):
+class PaiementSalaire(AutoCodeMixin, models.Model):
     class TypePaiement(models.TextChoices):
         ESPECES = "ESPECES", "Espèces"
         MOBILE_MONEY = "MOBILE_MONEY", "Mobile Money"
         VIREMENT = "VIREMENT", "Virement"
         AUTRE = "AUTRE", "Autre"
 
+    code_field = "numero"
+    code_prefix = "PAY-"
+    code_width = 5
+
+    # Numéro du paiement, repris sur le reçu et sur la dépense
+    numero = models.CharField(max_length=20, unique=True, blank=True)
     salaire = models.ForeignKey(Salaire, on_delete=models.PROTECT, related_name="paiements")
+    # Personne qui a reçu l'argent : le chef d'équipe, un membre ou la personne seule
+    beneficiaire = models.ForeignKey(Personne, on_delete=models.PROTECT, null=True, blank=True, related_name="paiements_recus")
     montant = models.DecimalField(max_digits=15, decimal_places=2)
     date_paiement = models.DateField()
     type_paiement = models.CharField(max_length=20, choices=TypePaiement.choices)
     reference = models.CharField(max_length=150, blank=True)
-    # Paiement groupé : même référence de groupe pour tous les membres payés ensemble
+    # Avance versée à la création du travail
+    est_avance = models.BooleanField(default=False)
+    # Équipe et groupe : paiements enregistrés ensemble (ancien paiement par équipe, paiement de plusieurs rémunérations)
     equipe = models.ForeignKey(Equipe, on_delete=models.SET_NULL, null=True, blank=True, related_name="paiements_salaire")
     groupe = models.CharField(max_length=40, blank=True, db_index=True)
+    # Dépense créée automatiquement pour ce paiement (une seule par paiement)
+    depense = models.OneToOneField(Depense, on_delete=models.SET_NULL, null=True, blank=True, related_name="paiement_salaire")
     observation = models.TextField(blank=True)
+    # Un paiement annulé reste dans l'historique (numéro, reçu) mais ne compte plus : ni dans le payé, ni dans les
+    # totaux, ni dans les dépenses (sa dépense est supprimée avec l'annulation).
+    annule = models.BooleanField(default=False)
+    date_annulation = models.DateTimeField(null=True, blank=True)
+    motif_annulation = models.CharField(max_length=255, blank=True)
 
     class Meta:
         db_table = "paiement_salaire"
         ordering = ["-date_paiement", "-id"]
         indexes = [models.Index(fields=["salaire", "date_paiement"], name="idx_paiement_sal_date")]
+        constraints = [models.CheckConstraint(condition=models.Q(montant__gt=0), name="ck_paiement_salaire_montant_positif")]
+
+
+class ClotureMensuelle(models.Model):
+    """
+    Clôture d'un mois : les chiffres du mois sont figés (copie dans `resume`) et plus aucune écriture n'est possible sur ses
+    données (travaux, dépenses, paiements, achats, mouvements de stock) tant que le Big Boss ne l'a pas rouvert.
+    """
+
+    periode = models.CharField(max_length=7, unique=True)  # AAAA-MM
+    cloturee = models.BooleanField(default=True)
+    date_cloture = models.DateTimeField(null=True, blank=True)
+    cloturee_par = models.ForeignKey("accounts.Utilisateur", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    resume = models.JSONField(default=dict, blank=True)
+    commentaire = models.CharField(max_length=255, blank=True)
+    date_reouverture = models.DateTimeField(null=True, blank=True)
+    reouverte_par = models.ForeignKey("accounts.Utilisateur", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    class Meta:
+        db_table = "cloture_mensuelle"
+        ordering = ["-periode"]
+
+    def __str__(self):
+        return f"{self.periode} ({'clôturé' if self.cloturee else 'rouvert'})"
 
 
 class Prevision(models.Model):
+    # Module « Prévisions » retiré le 11 octobre 2026 (plus d'écran, d'API, de rapport ni de tableau de bord).
+    # La table et ses données sont conservées telles quelles : aucune suppression sans décision explicite.
     campement = models.ForeignKey(Campement, on_delete=models.PROTECT, related_name="previsions")
     bloc = models.ForeignKey(Bloc, on_delete=models.PROTECT, null=True, blank=True, related_name="previsions")
     categorie = models.ForeignKey(CategorieDepense, on_delete=models.PROTECT, null=True, blank=True, related_name="previsions")

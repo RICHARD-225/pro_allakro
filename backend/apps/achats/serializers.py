@@ -7,6 +7,7 @@ from rest_framework import serializers
 
 from apps.core import validators as v
 from apps.core.models import Bloc
+from apps.core.unites import UNITES
 from apps.finances.calculs import statut_paiement
 from apps.finances.models import CategorieDepense, Depense
 
@@ -22,7 +23,19 @@ def montant_paye(achat):
 
 
 def synchroniser_depense(achat):
-    """La dépense liée reflète toujours l'achat (montant, bloc, date, statut de paiement)."""
+    """
+    La dépense liée reflète ce qui a été VERSÉ au vendeur, pas le montant total de l'achat : seule l'avance versée
+    apparaît dans Dépenses, puis la dépense grossit à chaque règlement. Elle est « Avance » tant que l'achat n'est pas
+    soldé, « Payée » ensuite. Tant que rien n'a été versé, il n'y a pas de dépense.
+    """
+    paye = montant_paye(achat)
+    if paye <= 0:
+        if achat.depense_id:
+            depense = achat.depense
+            AchatParticulier.objects.filter(pk=achat.pk).update(depense=None)
+            achat.depense = None
+            depense.delete()
+        return None
     vendeur = achat.particulier
     valeurs = {
         'categorie': CategorieDepense.achat_particuliers(),
@@ -30,11 +43,11 @@ def synchroniser_depense(achat):
         'campement_id': achat.campement_id,
         'date_depense': achat.date_achat,
         'designation': f"{achat.designation} — {vendeur} ({achat.reference})"[:255],
-        'quantite': achat.poids,
-        'unite': achat.unite_poids,
-        'prix_unitaire': achat.prix_unitaire,
-        'montant_total': achat.montant_total,
-        'statut': statut_paiement(achat.montant_total, montant_paye(achat)),
+        'quantite': 1,
+        'unite': '',
+        'prix_unitaire': paye,
+        'montant_total': paye,
+        'statut': Depense.Statut.PAYEE if paye >= achat.montant_total else Depense.Statut.AVANCE,
     }
     if achat.depense_id:
         depense = achat.depense
@@ -77,6 +90,7 @@ class AchatParticulierSerializer(serializers.ModelSerializer):
     campement_id = serializers.IntegerField(read_only=True)
     campement_nom = serializers.CharField(source='campement.nom', read_only=True)
     date_achat = serializers.DateField(default=timezone.localdate)
+    unite_poids = serializers.ChoiceField(choices=UNITES, default='kg')
     montant_verse = serializers.DecimalField(max_digits=15, decimal_places=2, write_only=True, required=False)
     type_paiement = serializers.ChoiceField(choices=PaiementAchat.TypePaiement.choices, write_only=True, required=False,
                                             default=PaiementAchat.TypePaiement.ESPECES)
@@ -199,6 +213,8 @@ class PaiementAchatSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'montant': [f"Dépasse le reste à payer au vendeur ({reste} FCFA)."]})
         if validated_data['date_paiement'] < achat.date_achat:
             raise serializers.ValidationError({'date': ["Le paiement ne peut pas précéder la date de l'achat."]})
+        from apps.finances.clotures import verifier_ouverte
+        verifier_ouverte(validated_data['date_paiement'], achat.date_achat)
         paiement = PaiementAchat.objects.create(achat=achat, **validated_data)
         synchroniser_depense(achat)
         return paiement

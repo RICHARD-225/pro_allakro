@@ -5,7 +5,7 @@ from apps.core.models import Bloc, Campement
 from apps.core.utils import parse_periode
 from apps.core.validators import libelle_periode
 from apps.finances.models import Salaire
-from apps.finances.views import personnes_du_bloc
+from apps.finances.views import filtre_perimetre_salaires
 
 
 class Perimetre:
@@ -69,13 +69,12 @@ class Perimetre:
     def sur_periode(self, queryset, champ):
         return queryset.filter(**{f'{champ}__range': (self.debut, self.fin)}) if self.debut else queryset
 
-    def salaires(self):
-        """Rémunérations du périmètre : personnes dont l'équipe actuelle est sur le bloc, ou rattachées au campement."""
+    def salaires(self, avec_annulees=False):
+        """Rémunérations du périmètre (bloc du travail ou de la personne), du mois choisi ; hors annulées par défaut."""
         queryset = Salaire.objects.all()
+        if not avec_annulees:
+            queryset = queryset.filter(annulee=False).exclude(travail__statut='ANNULE')
         if self.debut:
-            queryset = queryset.filter(date_debut=self.debut)
-        if self.bloc:
-            queryset = queryset.filter(personne_id__in=personnes_du_bloc(self.bloc.pk))
-        elif self.campement:
-            queryset = queryset.filter(personne__campement_id=self.campement.pk)
-        return queryset
+            queryset = queryset.filter(date_debut__range=(self.debut, self.fin))
+        return filtre_perimetre_salaires(queryset, self.bloc.pk if self.bloc else None,
+                                         self.campement.pk if self.campement and not self.bloc else None)

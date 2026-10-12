@@ -48,6 +48,10 @@ class AchatParticulier(AutoCodeMixin, models.Model):
         db_table = "achat_particulier"
         ordering = ["-date_achat", "-id"]
         indexes = [models.Index(fields=["particulier", "date_achat"], name="idx_achat_part_date")]
+        constraints = [
+            models.CheckConstraint(condition=models.Q(poids__gte=0, prix_unitaire__gte=0, montant_total__gte=0),
+                                   name="ck_achat_valeurs_positives"),
+        ]
 
     def __str__(self):
         return self.reference
@@ -78,3 +82,4 @@ class PaiementAchat(models.Model):
         db_table = "paiement_achat"
         ordering = ["-date_paiement", "-id"]
         indexes = [models.Index(fields=["achat", "date_paiement"], name="idx_paiement_achat_date")]
+        constraints = [models.CheckConstraint(condition=models.Q(montant__gt=0), name="ck_paiement_achat_montant_positif")]

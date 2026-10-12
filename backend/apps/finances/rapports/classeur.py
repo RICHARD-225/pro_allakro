@@ -29,7 +29,7 @@ COULEURS_THEMES = {
     'synthese': VERT, 'finances': '#ad6e47', 'personnel': '#97902f', 'operations': '#519744',
     'stock': '#5e8767', 'audit': '#888f88',
 }
-COULEURS_GROUPES = {'Dépenses': '#ad6e47', 'Rémunérations': '#97902f', 'Activité': '#519744', 'Stock et budget': '#5e8767'}
+COULEURS_GROUPES = {'Dépenses': '#ad6e47', 'Rémunérations': '#97902f', 'Activité': '#519744', 'Stock': '#5e8767'}
 COULEURS_GRAPHIQUE = ['#2f6142', '#519744', '#97902f', '#5e8767', '#ad6e47', '#73b063', '#c8c45e', '#7fa385', '#cd8f6e', '#486d50']
 
 # Statuts mis en couleur : (fond, texte)
@@ -38,7 +38,9 @@ OLIVE_STATUT = ('#f3f1d2', '#5e561e')
 TERRE_STATUT = ('#f5eae1', '#814631')
 STATUTS = {
     'Payée': VERT_STATUT, 'Partiellement payée': OLIVE_STATUT, 'Non payée': TERRE_STATUT,
-    'Terminé': VERT_STATUT, 'En cours': OLIVE_STATUT, 'Planifié': ('#e5ece7', '#3b5741'), 'Annulé': ('#e7e9e7', '#525852'),
+    'Payé': VERT_STATUT, 'Partiellement payé': OLIVE_STATUT, 'À payer': TERRE_STATUT,
+    'Terminé': VERT_STATUT, 'En cours': OLIVE_STATUT, 'À venir': ('#e5ece7', '#3b5741'), 'Planifié': ('#e5ece7', '#3b5741'),
+    'Annulé': ('#e7e9e7', '#525852'),
     'Suffisant': VERT_STATUT, 'Stock faible': TERRE_STATUT,
     'Entrée': VERT_STATUT, 'Sortie': TERRE_STATUT, 'Ajustement': OLIVE_STATUT,
 }

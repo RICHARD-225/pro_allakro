@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from apps.core import validators as v
-from apps.core.models import Personne
+from apps.core.models import Bloc, Personne
 
 from .models import Journal, RoleUtilisateur, Utilisateur
 
@@ -44,6 +44,21 @@ class ChangementMotDePasseSerializer(serializers.Serializer):
         return user
 
 
+class MotDePasseOublieSerializer(serializers.Serializer):
+    email = serializers.CharField(max_length=150)
+
+
+class ReinitialiserMotDePasseSerializer(serializers.Serializer):
+    token = serializers.CharField(max_length=200)
+    nouveau_mot_de_passe = serializers.CharField(write_only=True, max_length=128)
+    confirmation = serializers.CharField(write_only=True, max_length=128)
+
+    def validate(self, attrs):
+        if attrs['nouveau_mot_de_passe'] != attrs['confirmation']:
+            raise serializers.ValidationError({'confirmation': 'La confirmation ne correspond pas au nouveau mot de passe.'})
+        return attrs
+
+
 class MeSerializer(serializers.ModelSerializer):
     """Profil de l'utilisateur connecté, au format attendu par le frontend."""
 
@@ -65,7 +80,16 @@ class RoleSerializer(serializers.ModelSerializer):
 
 
 class UtilisateurSerializer(serializers.ModelSerializer):
-    personne_id = v.RelatedField(source='personne', queryset=Personne.objects.all())
+    """
+    Compte d'accès. À la création, le Big Boss rattache le compte à une personne existante (`personne_id`) ou en crée
+    une du même coup (`prenom`, `nom`, `bloc_id`, `telephone` facultatif) : c'est ainsi qu'il crée un superviseur.
+    """
+
+    personne_id = v.RelatedField(source='personne', queryset=Personne.objects.all(), required=False)
+    prenom = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=100)
+    nom_personne = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=100)
+    telephone = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=30)
+    bloc_id = v.RelatedField(write_only=True, required=False, queryset=Bloc.objects.all())
     nom = serializers.CharField(source='personne.nom_complet', read_only=True)
     email = serializers.EmailField(source='username')
     role = serializers.SlugRelatedField(slug_field='code', queryset=RoleUtilisateur.objects.all(),
@@ -74,7 +98,8 @@ class UtilisateurSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Utilisateur
-        fields = ['id', 'personne_id', 'nom', 'email', 'role', 'actif', 'derniere_connexion', 'password']
+        fields = ['id', 'personne_id', 'nom', 'email', 'role', 'actif', 'derniere_connexion', 'password',
+                  'prenom', 'nom_personne', 'telephone', 'bloc_id']
         read_only_fields = ['derniere_connexion']
 
     def validate_email(self, value):
@@ -93,6 +118,12 @@ class UtilisateurSerializer(serializers.ModelSerializer):
         password = attrs.get('password')
         if self.instance is None and not password:
             raise serializers.ValidationError({'password': 'Le mot de passe est obligatoire.'})
+        if self.instance is None and 'personne' not in attrs:
+            manquants = {champ: message for champ, message in (
+                ('prenom', 'Le prénom est obligatoire.'), ('nom_personne', 'Le nom est obligatoire.'),
+                ('bloc_id', "Le bloc d'affectation est obligatoire.")) if not attrs.get(champ)}
+            if manquants:
+                raise serializers.ValidationError(manquants)
         if password:
             try:
                 validate_password(password)
@@ -107,13 +138,34 @@ class UtilisateurSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        from apps.core.serializers import PersonneSerializer
+
         validated_data['password_hash'] = make_password(validated_data.pop('password'))
+        prenom = validated_data.pop('prenom', '')
+        nom = validated_data.pop('nom_personne', '')
+        telephone = validated_data.pop('telephone', '')
+        bloc = validated_data.pop('bloc', None) or validated_data.pop('bloc_id', None)
+        if 'personne' not in validated_data:
+            # Création du compte et de la personne du personnel en une seule fois (le rôle donne la fonction)
+            fonction = 'Superviseur' if validated_data['role'].code == RoleUtilisateur.SUPERVISEUR else 'Direction'
+            donnees = {'prenom': prenom, 'nom': nom, 'telephone': telephone, 'bloc_id': bloc.pk, 'fonction_libelle': fonction}
+            personne = PersonneSerializer(data=donnees, context=self.context)
+            if not personne.is_valid():
+                raise serializers.ValidationError({
+                    'prenom' if 'prenom' in personne.errors else 'nom_personne': next(iter(personne.errors.values()))})
+            validated_data['personne'] = personne.save()
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
+        for champ in ('prenom', 'nom_personne', 'telephone', 'bloc_id', 'bloc'):
+            validated_data.pop(champ, None)  # champs réservés à la création du compte
         password = validated_data.pop('password', None)
         if password:
             instance.password_hash = make_password(password)
+        # Mot de passe, rôle ou état du compte modifié : les sessions déjà ouvertes cessent de valoir
+        if password or ('role' in validated_data and validated_data['role'].pk != instance.role_id) \
+                or ('actif' in validated_data and validated_data['actif'] != instance.actif):
+            instance.token_version += 1
         return super().update(instance, validated_data)
 
 

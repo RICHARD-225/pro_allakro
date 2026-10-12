@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from django.db import models
-from django.db.models import Case, DecimalField, F, Sum, Value, When
+from django.db.models import Case, Count, DecimalField, F, Sum, Value, When
 from django.db.models.functions import Coalesce
 
 from apps.core.models import Bloc
@@ -27,7 +27,7 @@ class ProduitQuerySet(models.QuerySet):
             default=F("mouvements__quantite"),
             output_field=DecimalField(max_digits=15, decimal_places=3),
         )
-        return self.annotate(stock_calcule=Coalesce(Sum(signe), ZERO))
+        return self.annotate(stock_calcule=Coalesce(Sum(signe), ZERO), nb_mouvements=Count('mouvements'))
 
 
 class Produit(AutoCodeMixin, models.Model):
@@ -47,6 +47,9 @@ class Produit(AutoCodeMixin, models.Model):
     class Meta:
         db_table = "produit"
         ordering = ["nom"]
+        constraints = [
+            models.CheckConstraint(condition=models.Q(prix_unitaire__gte=0, stock_minimum__gte=0), name="ck_produit_valeurs_positives"),
+        ]
 
     def __str__(self):
         return self.nom
@@ -79,6 +82,13 @@ class MouvementStock(models.Model):
         indexes = [
             models.Index(fields=["produit", "date_mouvement"], name="idx_stock_produit_date"),
             models.Index(fields=["bloc", "date_mouvement"], name="idx_stock_bloc_date"),
+        ]
+        constraints = [
+            # Entrée et sortie : quantité strictement positive ; seul un ajustement peut être signé (jamais nul)
+            models.CheckConstraint(
+                condition=models.Q(type_mouvement="AJUSTEMENT", quantite__lt=0) | models.Q(quantite__gt=0),
+                name="ck_mouvement_quantite_coherente"),
+            models.CheckConstraint(condition=models.Q(prix_unitaire__gte=0), name="ck_mouvement_prix_positif"),
         ]
 
     @property
