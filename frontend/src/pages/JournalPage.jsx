@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { ScrollText, Plus, Minus, Eye, CreditCard, LogIn, Settings } from 'lucide-react';
+import { ScrollText, Plus, Minus, Eye, CreditCard, LogIn, Settings, Ban, Lock, LockOpen } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
-import { DataTable, Badge, ErrorState, Select } from '@/components/ui';
+import { DataTable, ErrorState, Select } from '@/components/ui';
 import { journalService } from '@/services';
+import { useListeServeur } from '@/hooks/useListeServeur';
 import { formatDateTime } from '@/utils/format';
 
 const ACTION_ICONS = {
@@ -12,6 +13,9 @@ const ACTION_ICONS = {
   'Suppression': Minus,
   'Consultation': Eye,
   'Paiement': CreditCard,
+  'Annulation': Ban,
+  'Clôture': Lock,
+  'Réouverture': LockOpen,
 };
 
 const ACTION_BADGES = {
@@ -21,62 +25,71 @@ const ACTION_BADGES = {
   'Suppression': 'bg-earth-50 text-earth-700',
   'Consultation': 'bg-ink-100 text-ink-600',
   'Paiement': 'bg-forest-50 text-forest-700',
+  'Annulation': 'bg-earth-50 text-earth-700',
+  'Clôture': 'bg-forest-50 text-forest-700',
+  'Réouverture': 'bg-olive-50 text-olive-700',
 };
 
+// Actions enregistrées au journal (filtre)
+const ACTIONS = ['Connexion', 'Création', 'Modification', 'Suppression', 'Consultation', 'Paiement', 'Annulation', 'Clôture', 'Réouverture'];
+
 export default function JournalPage() {
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [filterAction, setFilterAction] = useState('');
 
-  useEffect(() => {
-    journalService.getAll()
-      .then(setData)
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  }, []);
+  // Journal paginé par le serveur : page, recherche (action, élément, détails, utilisateur), tri et filtre par action
+  const { lignes, serveur, chargement: loading, erreur } = useListeServeur({
+    charger: (p) => journalService.page(p),
+    filtres: { action: filterAction },
+    tailleDefaut: 25,
+  });
+  useEffect(() => { if (erreur) setError(true); }, [erreur]);
 
-  const actions = [...new Set(data.map((d) => d.action))];
-
-  const filtered = data.filter((d) => !filterAction || d.action === filterAction);
+  const actions = ACTIONS;
 
   const columns = [
-    { key: 'timestamp', header: 'Date/Heure', sortable: true, render: (row) => <span className="text-ink-600 text-xs">{formatDateTime(row.timestamp)}</span> },
-    { key: 'utilisateur', header: 'Utilisateur', sortable: true, render: (row) => <span className="font-medium text-ink-800">{row.utilisateur}</span> },
-    { key: 'action', header: 'Action', render: (row) => {
+    { key: 'details', header: 'Action', render: (row) => {
       const Icon = ACTION_ICONS[row.action] || Eye;
       const badgeClass = ACTION_BADGES[row.action] || 'bg-ink-100 text-ink-600';
       return (
-        <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-2xs font-medium ${badgeClass}`}>
-          <Icon size={11} />
-          {row.action}
+        <span className="block max-w-xl whitespace-normal">
+          <span className={`mr-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-medium ${badgeClass}`}>
+            <Icon size={11} />
+            {row.action}
+          </span>
+          <span className="text-sm text-ink-700">{row.details}</span>
         </span>
       );
     } },
-    { key: 'entite', header: 'Entité' },
-    { key: 'details', header: 'Détails', render: (row) => <span className="text-ink-600 text-xs">{row.details}</span> },
+    { key: 'utilisateur', header: 'Utilisateur', sortable: true, render: (row) => <span className="font-medium text-ink-800">{row.utilisateur}</span> },
+    { key: 'timestamp', header: 'Date', sortable: true, render: (row) => <span className="tabular-nums text-ink-600">{formatDateTime(row.timestamp)}</span> },
+    { key: 'entite', header: 'Élément', mobile: false },
   ];
 
   if (error) return <ErrorState onRetry={() => window.location.reload()} />;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <PageHeader title="Journal" subtitle="Historique des actions" icon={ScrollText} />
-
-      <Select
-        value={filterAction}
-        onChange={(e) => setFilterAction(e.target.value)}
-        options={actions.map((a) => ({ value: a, label: a }))}
-        placeholder="Toutes les actions"
-        className="w-48"
-      />
 
       <DataTable
         columns={columns}
-        data={filtered}
+        data={lignes}
+        serveur={serveur}
         loading={loading}
-        searchPlaceholder="Rechercher dans le journal..."
-        searchKeys={['utilisateur', 'entite', 'details']}
+        searchPlaceholder="Rechercher une action..."
+        filters={(
+          <Select
+            value={filterAction}
+            onChange={(e) => setFilterAction(e.target.value)}
+            options={actions.map((a) => ({ value: a, label: a }))}
+            placeholder="Action" emptyLabel="Toutes les actions"
+            className="w-full sm:w-40"
+          />
+        )}
+        filtersActive={filterAction ? 1 : 0}
+        onResetFilters={() => setFilterAction('')}
+        emptyTitle="Aucune action"
       />
     </div>
   );

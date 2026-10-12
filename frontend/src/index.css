@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -12,8 +10,14 @@
   }
 
   body {
-    @apply bg-cream-100 text-ink-800 font-sans antialiased;
+    @apply bg-cream-100 text-sm text-ink-800 font-sans antialiased;
+    /* Inter : « a » à un étage (cv11) et chiffres ouverts (ss01), plus lisibles en petit */
     font-feature-settings: 'cv11', 'ss01';
+  }
+
+  /* Titres légèrement resserrés (la couleur reste donnée par les classes, mode sombre compris) */
+  h1, h2, h3, h4 {
+    letter-spacing: -0.01em;
   }
 
   *:focus-visible {
@@ -116,7 +120,104 @@ html[data-theme='dark'] textarea::placeholder {
   color: var(--dark-text-muted);
 }
 
+/* Pastilles et textes colorés lisibles en mode sombre (fond teinté sombre, texte clair) */
+html[data-theme='dark'] .bg-forest-100 { background-color: rgb(62 139 84 / 0.28) !important; }
+html[data-theme='dark'] .bg-leaf-100 { background-color: rgb(81 151 68 / 0.26) !important; }
+html[data-theme='dark'] .bg-olive-100 { background-color: rgb(151 144 47 / 0.28) !important; }
+html[data-theme='dark'] .bg-earth-100 { background-color: rgb(173 110 71 / 0.28) !important; }
+html[data-theme='dark'] .bg-sage-100 { background-color: rgb(94 135 103 / 0.28) !important; }
+html[data-theme='dark'] .bg-ink-100 { background-color: rgb(255 255 255 / 0.09) !important; }
+html[data-theme='dark'] .text-leaf-700,
+html[data-theme='dark'] .text-forest-800 { color: #b5dfab !important; }
+html[data-theme='dark'] .text-olive-700,
+html[data-theme='dark'] .text-olive-800 { color: #e0d78f !important; }
+html[data-theme='dark'] .text-earth-700 { color: #edb595 !important; }
+html[data-theme='dark'] .text-sage-700 { color: #c1d9c8 !important; }
+
+/* Survols lisibles en mode sombre (les fonds clairs de survol deviennent un gris-vert sombre) */
+html[data-theme='dark'] [class*='hover:bg-cream-50']:hover,
+html[data-theme='dark'] [class*='hover:bg-cream-100']:hover,
+html[data-theme='dark'] [class*='hover:bg-ink-50']:hover,
+html[data-theme='dark'] [class*='hover:bg-forest-50']:hover,
+html[data-theme='dark'] [class*='hover:bg-earth-50']:hover {
+  background-color: var(--dark-surface-raised) !important;
+}
+
+/* Identité ALLAKRO en mode sombre : la barre latérale et l'en-tête restent verts, plus profonds */
+html[data-theme='dark'] .app-sidebar {
+  background: linear-gradient(180deg, #16301f 0%, #0b1a11 100%);
+  border-color: var(--dark-border);
+}
+html[data-theme='dark'] .app-header {
+  background: linear-gradient(90deg, #16301f 0%, #1d3d29 100%);
+  border-color: var(--dark-border);
+}
+html[data-theme='dark'] .header-search:focus {
+  background-color: var(--dark-surface);
+  color: var(--dark-text);
+}
+
 @layer components {
+  /* Identité ALLAKRO : barre latérale et en-tête verts (texte clair, contraste élevé) */
+  .app-sidebar {
+    background: linear-gradient(180deg, theme('colors.forest.800') 0%, theme('colors.forest.950') 100%);
+    color: theme('colors.forest.100');
+  }
+  .app-sidebar-divider {
+    border-color: rgb(255 255 255 / 0.12);
+  }
+  .side-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 cursor-pointer;
+    color: rgb(220 238 224 / 0.88);
+  }
+  .side-item:hover {
+    background-color: rgb(255 255 255 / 0.09);
+    color: #fff;
+  }
+  .side-item-active,
+  .side-item-active:hover {
+    background-color: rgb(255 255 255 / 0.15);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: inset 3px 0 0 theme('colors.leaf.300');
+  }
+  .side-item-icon {
+    color: theme('colors.forest.200');
+  }
+  .side-item-active .side-item-icon,
+  .side-item:hover .side-item-icon {
+    color: theme('colors.leaf.300');
+  }
+  .app-header {
+    background: linear-gradient(90deg, theme('colors.forest.700') 0%, theme('colors.forest.600') 100%);
+    color: #fff;
+  }
+  .header-btn {
+    @apply rounded-lg p-2 transition-colors;
+    color: rgb(255 255 255 / 0.88);
+  }
+  .header-btn:hover {
+    background-color: rgb(255 255 255 / 0.14);
+    color: #fff;
+  }
+  .header-search {
+    @apply w-full pl-9 pr-3 py-2 text-base sm:text-sm rounded-lg transition-all;
+    background-color: rgb(255 255 255 / 0.13);
+    border: 1px solid rgb(255 255 255 / 0.22);
+    color: #fff;
+  }
+  .header-search::placeholder {
+    color: rgb(220 238 224 / 0.8);
+  }
+  .header-search:focus {
+    background-color: #fff;
+    border-color: transparent;
+    color: theme('colors.ink.800');
+  }
+  .header-search:focus::placeholder {
+    color: theme('colors.ink.400');
+  }
+
   /* Card */
   .card {
     @apply bg-white rounded-xl shadow-card border border-ink-100/60;
@@ -143,7 +244,7 @@ html[data-theme='dark'] textarea::placeholder {
 
   /* Badge */
   .badge {
-    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-medium;
+    @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-2xs font-medium;
   }
 
   /* Table */
@@ -165,8 +266,9 @@ html[data-theme='dark'] textarea::placeholder {
   }
 
   /* Input */
+  /* 16 px sur téléphone : évite le zoom automatique des navigateurs mobiles à la saisie */
   .input-base {
-    @apply w-full px-3 py-2 text-sm bg-white border border-ink-200 rounded-lg
+    @apply w-full px-3 py-2 text-base sm:text-sm bg-white border border-ink-200 rounded-lg
            text-ink-800 placeholder:text-ink-400
            focus:border-forest-400 focus:ring-2 focus:ring-forest-100
            transition-colors duration-150
@@ -175,6 +277,14 @@ html[data-theme='dark'] textarea::placeholder {
 
   .label-base {
     @apply block text-sm font-medium text-ink-700 mb-1.5;
+  }
+}
+
+/* Moins d'animations pour les personnes qui le demandent au système */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
@@ -191,4 +301,258 @@ html[data-theme='dark'] textarea::placeholder {
   .no-tap-highlight {
     -webkit-tap-highlight-color: transparent;
   }
+}
+
+/* ───────── Reçu de paiement : aperçu et impression partagent exactement cette mise en page ─────────
+   Feuille blanche, texte foncé, quel que soit le thème (clair / sombre) de l'application. */
+.recu {
+  position: relative;
+  max-width: 780px;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid #cfd8d1;
+  border-radius: 18px;
+  background: #fff;
+  color: #2b2e2b;
+  font-size: 13px;
+  line-height: 1.5;
+  font-feature-settings: 'cv11', 'ss01';
+  box-shadow: 0 10px 30px -12px rgb(28 58 39 / 0.35);
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.recu h4 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #2f6142;
+}
+.recu-bandeau {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 18px;
+  padding: 22px 28px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 92% -30%, rgb(255 255 255 / 0.16) 0 120px, transparent 121px),
+    radial-gradient(circle at 78% 130%, rgb(255 255 255 / 0.1) 0 90px, transparent 91px),
+    linear-gradient(120deg, #1c3a27 0%, #2f6142 60%, #3e8b54 100%);
+}
+.recu-marque-bloc { display: flex; align-items: center; gap: 12px; }
+.recu-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgb(255 255 255 / 0.35);
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.16);
+}
+.recu-marque { font-size: 22px; font-weight: 700; letter-spacing: 0.04em; line-height: 1.15; }
+.recu-sous-marque { font-size: 12px; color: #d4ead9; }
+.recu-titre { text-align: right; }
+.recu-titre strong { display: block; font-size: 14px; font-weight: 600; letter-spacing: 0.1em; }
+.recu-numero {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.18);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.recu-alerte {
+  padding: 9px 28px;
+  background: #fbe9e2;
+  border-bottom: 1px solid #efc0ac;
+  color: #8a3a1c;
+  font-weight: 600;
+  text-align: center;
+}
+.recu-corps { display: grid; gap: 18px; padding: 24px 28px 22px; }
+.recu-montant {
+  padding: 16px 20px;
+  border: 1px solid #cfe5d5;
+  border-left: 5px solid #2f6142;
+  border-radius: 12px;
+  background: linear-gradient(100deg, #eef7f0 0%, #f9fcfa 100%);
+}
+.recu-montant-tete { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.recu-montant small { font-size: 12px; color: #5d655d; }
+.recu-montant > strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: #1c3a27;
+  font-variant-numeric: tabular-nums;
+}
+.recu-lettres { display: block; margin-top: 2px; font-size: 12.5px; font-style: italic; color: #4a524a; }
+.recu-puces { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.recu-puces span {
+  padding: 2px 10px;
+  border: 1px solid #cfe5d5;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  color: #2f6142;
+}
+.recu-etat {
+  padding: 2px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.recu-etat--solde { background: #d6efdc; color: #1f5a31; }
+.recu-etat--acompte { background: #f6efc6; color: #6d6420; }
+.recu-etat--annule { background: #f6d8cc; color: #8a3a1c; }
+.recu-mention {
+  padding: 8px 14px;
+  border: 1px solid #c8c45e;
+  border-radius: 10px;
+  background: #f6f3d3;
+  color: #5e561e;
+  font-weight: 600;
+  text-align: center;
+}
+.recu-deux { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.recu-carte, .recu-situation, .recu-observation {
+  padding: 14px 16px;
+  border: 1px solid #dfe5e0;
+  border-radius: 12px;
+  background: #fbfcfb;
+}
+.recu-personne { display: flex; align-items: center; gap: 12px; }
+.recu-avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #dceee0;
+  color: #1f5a31;
+  font-size: 15px;
+  font-weight: 700;
+}
+.recu-nom { font-size: 15px; font-weight: 600; color: #1d201d; }
+.recu-matricule { font-size: 12px; color: #5d655d; font-variant-numeric: tabular-nums; }
+.recu-role { margin-top: 10px; padding-top: 8px; border-top: 1px dashed #d0d8d2; font-size: 12px; color: #4a524a; }
+.recu-ligne {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 5px 0;
+  border-bottom: 1px dashed #d9dfda;
+}
+.recu-ligne:last-child { border-bottom: 0; }
+.recu-ligne > span:first-child { color: #5d655d; }
+.recu-ligne > span:last-child { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.recu-chiffres { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.recu-chiffres > div { padding: 8px 12px; border-radius: 10px; background: #fff; border: 1px solid #e3e8e4; }
+.recu-chiffres small { display: block; font-size: 11.5px; color: #5d655d; }
+.recu-chiffres strong { font-size: 15px; font-variant-numeric: tabular-nums; }
+.recu-chiffres .recu-reste { background: #fcefe8; border-color: #efc9b8; }
+.recu-chiffres .recu-reste strong { color: #8a3a1c; }
+.recu-chiffres .recu-solde { background: #eaf6ed; border-color: #c4e2cc; }
+.recu-chiffres .recu-solde strong { color: #1f5a31; }
+.recu-barre { height: 8px; margin-top: 12px; overflow: hidden; border-radius: 999px; background: #e3e9e4; }
+.recu-barre span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #3e8b54, #2f6142); }
+.recu-barre-legende { margin-top: 4px; font-size: 11px; color: #697069; }
+.recu-observation p {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 3px solid #cfe5d5;
+  color: #3c403c;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.recu-signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; margin-top: 6px; }
+.recu-signature {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 86px;
+  border-bottom: 1.5px dotted #8f9b92;
+  font-size: 11px;
+  color: #5d655d;
+}
+.recu-signature span { padding-bottom: 5px; }
+.recu-pied {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 11px 28px;
+  border-top: 3px solid #2f6142;
+  background: #f3f7f4;
+  font-size: 11px;
+  color: #5d655d;
+}
+.recu-numero-pied { font-weight: 600; font-variant-numeric: tabular-nums; }
+/* Reçu d'un paiement annulé : filigrane et couleurs éteintes */
+.recu--annule::after {
+  content: 'ANNULÉ';
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-18deg);
+  padding: 4px 28px;
+  border: 6px solid rgb(176 72 36 / 0.22);
+  border-radius: 14px;
+  color: rgb(176 72 36 / 0.22);
+  font-size: 84px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+/* Reçu d'un paiement qui solde la rémunération : filigrane « PAYÉ » */
+.recu--solde::after {
+  content: 'PAYÉ';
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-18deg);
+  padding: 4px 36px;
+  border: 6px solid rgb(47 97 66 / 0.2);
+  border-radius: 14px;
+  color: rgb(47 97 66 / 0.2);
+  font-size: 96px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  pointer-events: none;
+}
+.recu--annule .recu-montant > strong { text-decoration: line-through; text-decoration-thickness: 2px; color: #7a6a62; }
+@media (max-width: 560px) {
+  .recu-bandeau, .recu-corps, .recu-pied, .recu-alerte { padding-left: 16px; padding-right: 16px; }
+  .recu-titre { text-align: left; }
+  .recu-deux, .recu-chiffres { grid-template-columns: 1fr; }
+  .recu-signatures { gap: 12px; }
+  .recu-montant > strong { font-size: 26px; }
+  .recu--annule::after { font-size: 52px; }
+  .recu--solde::after { font-size: 60px; }
+}
+
+/* Impression : seul le reçu est imprimé, sur une page A4, sans menu ni boutons */
+#zone-impression { display: none; }
+@media print {
+  @page { size: A4 portrait; margin: 10mm; }
+  html, body { background: #fff !important; }
+  body > *:not(#zone-impression) { display: none !important; }
+  #zone-impression { display: block !important; }
+  #zone-impression .recu { max-width: none; border-radius: 0; box-shadow: none; }
+  #zone-impression .recu--annule::after, #zone-impression .recu--solde::after { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .recu-bandeau, .recu-montant, .recu-mention, .recu-deux, .recu-situation, .recu-signatures, .recu-observation { break-inside: avoid; }
 }

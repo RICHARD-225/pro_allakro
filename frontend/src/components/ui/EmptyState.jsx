@@ -14,7 +14,7 @@ export default function EmptyState({
         <Icon size={24} className="text-ink-400" />
       </div>
       <h3 className="text-sm font-semibold text-ink-700">{title}</h3>
-      {message && <p className="mt-1 text-sm text-ink-400 max-w-sm">{message}</p>}
+      {message && <p className="mt-1 text-sm text-ink-500 max-w-sm">{message}</p>}
       {actionLabel && onAction && (
         <Button variant="primary" size="sm" className="mt-4" onClick={onAction}>
           {actionLabel}

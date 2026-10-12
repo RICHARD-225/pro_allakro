@@ -1,62 +1,114 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Wallet, Plus, Trash2, ShoppingBag } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Wallet, Plus, CheckCircle2, Hourglass, ArrowUpRight } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/PageHeader';
-import BlocPicker, { matchBlocFilter, buildBlocFilter } from '@/components/BlocPicker';
-import { DataTable, Badge, Button, ErrorState, Select, StatCard, ConfirmDialog, Modal, Input } from '@/components/ui';
+import RowActions from '@/components/RowActions';
+import BlocPicker from '@/components/BlocPicker';
+import { DataTable, Button, ErrorState, FiltrePeriode, Select, KpiGrid } from '@/components/ui';
+import { PERIODE_VIDE, libellePlage, periodeActive, plagePeriode, erreurPeriode } from '@/components/ui/FiltrePeriode';
+import { compterFiltres } from '@/components/ui/Filtres';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { depensesService, campementsService, blocsService, categoriesDepensesService } from '@/services';
-import { formatFCFA, formatDate } from '@/utils/format';
+import DepenseFormulaire from '@/pages/depenses/DepenseFormulaire';
+import { colonnesDepenses, pageSource } from '@/pages/depenses/colonnes';
+import { useSuppression } from '@/hooks/useSuppression';
+import { useListeServeur } from '@/hooks/useListeServeur';
+import { depensesService, campementsService, blocsService, categoriesDepensesService, paiementsService, achatsParticuliersService } from '@/services';
+import { formatFCFA, formatNumber } from '@/utils/format';
 import { showServerErrors, today } from '@/utils/errors';
 import { ROLE, STATUT_DEPENSE_LABELS } from '@/constants';
 
-const emptyForm = () => ({ designation: '', categorie_id: '', montant_total: '', campement_id: '', bloc_id: '', date: today(), statut: 'NON_PAYEE' });
+const emptyForm = () => ({
+  designation: '', categorie_id: '', montant_total: '', campement_id: '', bloc_id: '', date: today(),
+  numero_justificatif: '', observation: '',
+});
+
 
 export default function DepensesPage() {
   const { user } = useAuth();
   const isBoss = user?.role === ROLE.BIG_BOSS;
-  const [data, setData] = useState([]);
+  const navigate = useNavigate();
   const [campements, setCampements] = useState([]);
   const [blocs, setBlocs] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [filterCategorie, setFilterCategorie] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
+  const [periode, setPeriode] = useState(PERIODE_VIDE);
   const [filtreBloc, setFiltreBloc] = useState({ campement_id: '', bloc_id: '' });
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [edition, setEdition] = useState(null); // null fermé · 'nouvelle' · dépense modifiée
   const [form, setForm] = useState(emptyForm);
   const [formErrors, setFormErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const toast = useToast();
+  const enModification = edition && edition !== 'nouvelle';
 
   useEffect(() => {
-    Promise.all([depensesService.getAll(), campementsService.getAll(), blocsService.getAll(), categoriesDepensesService.getAll()])
-      .then(([d, c, b, cat]) => {
-        setData(d);
+    Promise.all([campementsService.getAll(), blocsService.getAll(), categoriesDepensesService.getAll()])
+      .then(([c, b, cat]) => {
         setCampements(c);
         setBlocs(b);
         setCategories(cat);
-        setLoading(false);
       })
-      .catch(() => { setError(true); setLoading(false); });
+      .catch(() => setError(true));
   }, []);
 
-  // Les achats aux particuliers se saisissent depuis leur page (calcul automatique du montant)
-  const categoriesSaisie = categories.filter((c) => c.actif && !c.systeme).map((c) => ({ value: c.id, label: c.libelle }));
+  // Liste paginée par le serveur : page, recherche, tri, filtres (catégorie, statut, bloc, période) et indicateurs de TOUTES les lignes filtrées
+  const periodeInvalide = Boolean(erreurPeriode(periode));
+  const { lignes, totaux, serveur, chargement: loading, erreur, recharger } = useListeServeur({
+    charger: (p) => depensesService.page(p),
+    totaux: (p) => depensesService.totaux(p),
+    filtres: {
+      categorie_id: filterCategorie, statut: filterStatut, campement_id: filtreBloc.campement_id, bloc_id: filtreBloc.bloc_id, ...plagePeriode(periode),
+    },
+    actif: !periodeInvalide,
+  });
+  useEffect(() => { if (erreur) setError(true); }, [erreur]);
 
-  const filtered = useMemo(() => {
-    const f = buildBlocFilter(filtreBloc, blocs);
-    return data.filter((d) => (!filterCategorie || d.categorie_id === filterCategorie)
-      && (!filterStatut || d.statut === filterStatut)
-      && matchBlocFilter(d, f));
-  }, [data, filterCategorie, filterStatut, filtreBloc, blocs]);
+  const { demander, dialogue } = useSuppression({
+    supprimer: (row) => depensesService.remove(row.id),
+    apres: () => recharger(),
+    message: (row) => `Supprimer la dépense « ${row.designation} » (${formatFCFA(row.montant_total)}) ? Cette action est irréversible.`,
+    succes: () => 'Dépense supprimée',
+  });
 
-  const totalDepenses = filtered.reduce((s, d) => s + d.montant_total, 0);
-  const depensesPayees = filtered.filter((d) => d.statut === 'PAYEE').reduce((s, d) => s + d.montant_total, 0);
-  const reste = totalDepenses - depensesPayees;
+  // Supprimer une dépense automatique agit sur sa source : un paiement de salaire est annulé (il reste dans l'historique),
+  // un achat est supprimé avec ses règlements. Toujours après confirmation, et réservé au Big Boss.
+  const { demander: demanderSuppressionSource, dialogue: dialogueSource } = useSuppression({
+    supprimer: (row) => (row.origine?.type === 'SALAIRE'
+      ? paiementsService.annuler(row.origine.id, 'Dépense supprimée')
+      : achatsParticuliersService.remove(row.origine.id)),
+    apres: () => recharger(),
+    titre: 'Supprimer la dépense',
+    libelleBouton: 'Supprimer la dépense',
+    message: (row) => (row.origine?.type === 'SALAIRE'
+      ? `Cette dépense est le paiement ${row.origine.reference} de ${row.origine.beneficiaire_nom || 'la personne'} (${formatFCFA(row.montant_total)}). `
+        + "La supprimer annule ce paiement : il reste dans l'historique, marqué « annulé », et le reste à payer de la rémunération augmente d'autant."
+      : `Cette dépense est l'achat ${row.origine?.reference} (${formatFCFA(row.montant_total)}). `
+        + 'La supprimer supprime aussi cet achat et ses règlements. Cette action est irréversible.'),
+    succes: () => 'Dépense supprimée',
+  });
+
+  // Les achats aux particuliers et les salaires s'enregistrent depuis leurs pages (dépense créée automatiquement)
+  const categoriesSaisie = categories
+    .filter((c) => (c.actif && !c.systeme) || c.id === form.categorie_id)
+    .map((c) => ({ value: c.id, label: c.libelle }));
+
+  const totalDepenses = totaux?.total ?? 0;
+  const depensesPayees = totaux?.payees ?? 0;
+  const avances = totaux?.avances ?? 0;
+
+  const ouvrir = (depense = null) => {
+    setForm(depense
+      ? {
+        designation: depense.designation, categorie_id: depense.categorie_id, montant_total: String(depense.montant_total),
+        campement_id: depense.campement_id, bloc_id: depense.bloc_id, date: depense.date,
+        numero_justificatif: depense.numero_justificatif || '', observation: depense.observation || '',
+      }
+      : emptyForm());
+    setFormErrors({});
+    setEdition(depense || 'nouvelle');
+  };
 
   const validate = () => {
     const errs = {};
@@ -73,20 +125,20 @@ export default function DepensesPage() {
   const handleSubmit = async () => {
     if (!validate()) return;
     setSaving(true);
+    const payload = {
+      designation: form.designation.trim(),
+      categorie_id: form.categorie_id,
+      montant_total: Number(form.montant_total),
+      bloc_id: form.bloc_id,
+      date: form.date,
+      numero_justificatif: form.numero_justificatif.trim(),
+      observation: form.observation.trim(),
+    };
     try {
-      const item = await depensesService.create({
-        designation: form.designation.trim(),
-        categorie_id: form.categorie_id,
-        montant_total: Number(form.montant_total),
-        bloc_id: form.bloc_id,
-        date: form.date,
-        statut: form.statut,
-      });
-      setData((d) => [item, ...d]);
-      setShowAddModal(false);
-      setForm(emptyForm());
-      setFormErrors({});
-      toast.success('Dépense enregistrée');
+      enModification ? await depensesService.update(edition.id, payload) : await depensesService.create(payload);
+      recharger();
+      setEdition(null);
+      toast.success(enModification ? 'Dépense modifiée' : 'Dépense enregistrée');
     } catch (err) {
       showServerErrors(err, { setFormErrors, toast });
     } finally {
@@ -94,166 +146,90 @@ export default function DepensesPage() {
     }
   };
 
-  const handleDelete = async () => {
-    try {
-      await depensesService.remove(deleteTarget.id);
-      setData((d) => d.filter((x) => x.id !== deleteTarget.id));
-      toast.success('Dépense supprimée');
-    } catch (err) {
-      showServerErrors(err, { toast });
-    } finally {
-      setDeleteTarget(null);
+  const columns = colonnesDepenses;
+
+  // Une dépense issue d'un achat ou d'un paiement de salaire se modifie depuis sa source
+  const ActionsCell = ({ row }) => {
+    if (!row.modifiable) {
+      const salaire = row.origine?.type === 'SALAIRE';
+      return (
+        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+          <Link to={pageSource(row)}
+            title={salaire ? 'Se modifie depuis Salaires' : 'Se modifie depuis Achats particuliers'}
+            className="inline-flex items-center gap-0.5 rounded-lg px-2 py-1 text-xs font-medium text-forest-700 hover:bg-forest-50">
+            {salaire ? 'Paiement' : 'Achat'} <ArrowUpRight size={13} />
+          </Link>
+          {isBoss && <RowActions onDelete={() => demanderSuppressionSource(row)} />}
+        </div>
+      );
     }
+    return <RowActions onEdit={() => ouvrir(row)} onDelete={isBoss ? () => demander(row) : undefined} />;
   };
 
-  const columns = [
-    { key: 'designation', header: 'Désignation', sortable: true, render: (row) => (
-      <span className="flex items-center gap-1.5 font-medium text-ink-800">
-        {row.achat_id && <ShoppingBag size={13} className="text-olive-600 shrink-0" aria-label="Achat particulier" />}
-        {row.designation}
-      </span>
-    ) },
-    { key: 'categorie', header: 'Catégorie', sortable: true },
-    { key: 'campement_nom', header: 'Campement' },
-    { key: 'bloc_code', header: 'Bloc', render: (row) => <span className="font-mono text-xs">{row.bloc_code || '—'}</span> },
-    { key: 'date', header: 'Date', sortable: true, render: (row) => formatDate(row.date) },
-    { key: 'montant_total', header: 'Montant', sortable: true, render: (row) => <span className="tabular-nums font-medium">{formatFCFA(row.montant_total)}</span> },
-    { key: 'statut', header: 'Statut', render: (row) => <Badge status={row.statut}>{STATUT_DEPENSE_LABELS[row.statut]}</Badge> },
-  ];
-
-  // Une dépense issue d'un achat se gère depuis la page Achats particuliers
-  const ActionsCell = ({ row }) => (
-    <div className="flex items-center justify-end gap-1">
-      {row.achat_id ? (
-        <Link to="/particuliers" className="text-xs text-forest-700 hover:underline">Voir l'achat</Link>
-      ) : isBoss ? (
-        <button onClick={() => setDeleteTarget(row)} className="p-1.5 rounded-lg text-ink-400 hover:bg-earth-50 hover:text-earth-600 transition-colors" aria-label="Supprimer"><Trash2 size={15} /></button>
-      ) : null}
-    </div>
-  );
+  // Clic sur une ligne : formulaire de modification, sinon la page d'origine (salaire, achat)
+  const ouvrirLigne = (row) => (row.modifiable ? ouvrir(row) : navigate(pageSource(row)));
 
   if (error) return <ErrorState onRetry={() => window.location.reload()} />;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <PageHeader
         title="Dépenses"
-        subtitle="Charges de l'exploitation, par bloc"
+        subtitle="Charges par bloc, achats et salaires compris"
         icon={Wallet}
-        actions={<Button size="sm" onClick={() => { setForm(emptyForm()); setFormErrors({}); setShowAddModal(true); }}><Plus size={16} /> Nouvelle dépense</Button>}
+        actions={<Button size="sm" onClick={() => ouvrir()}><Plus size={16} /> Nouvelle dépense</Button>}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <StatCard label="Total dépenses" value={formatFCFA(totalDepenses)} icon={Wallet} accent="forest" />
-        <StatCard label="Payé" value={formatFCFA(depensesPayees)} icon={Wallet} accent="leaf" />
-        <StatCard label="Reste à payer" value={formatFCFA(reste)} icon={Wallet} accent="earth" />
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <Select
-          value={filterCategorie}
-          onChange={(e) => setFilterCategorie(e.target.value)}
-          options={categories.map((c) => ({ value: c.id, label: c.libelle }))}
-          placeholder="Toutes les catégories"
-          className="w-full sm:w-56"
-        />
-        <Select
-          value={filterStatut}
-          onChange={(e) => setFilterStatut(e.target.value)}
-          options={Object.entries(STATUT_DEPENSE_LABELS).map(([value, label]) => ({ value, label }))}
-          placeholder="Tous les statuts"
-          className="w-full sm:w-48"
-        />
-        <BlocPicker mode="filter" campements={campements} blocs={blocs} value={filtreBloc} onChange={setFiltreBloc} />
-      </div>
+      <KpiGrid items={[
+        { label: 'Total dépenses', value: formatNumber(totalDepenses), unit: 'FCFA', icon: Wallet, accent: 'forest',
+          hint: libellePlage(periode) || undefined },
+        { label: 'Payées', value: formatNumber(depensesPayees), unit: 'FCFA', icon: CheckCircle2, accent: 'leaf' },
+        { label: 'Avances à solder', value: formatNumber(avances), unit: 'FCFA', icon: Hourglass, accent: 'earth',
+          hint: 'Avances versées dont la rémunération n\'est pas soldée' },
+      ]} />
 
       <DataTable
         columns={columns}
-        data={filtered}
+        data={lignes}
+        serveur={serveur}
         loading={loading}
         searchPlaceholder="Rechercher une dépense..."
-        searchKeys={['designation', 'categorie', 'bloc_code']}
+        onRowClick={ouvrirLigne}
         actions={ActionsCell}
-      />
-
-      <ConfirmDialog
-        open={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={handleDelete}
-        message={`Voulez-vous vraiment supprimer la dépense "${deleteTarget?.designation}" ? Cette action est irréversible.`}
-      />
-
-      <Modal
-        open={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        title="Nouvelle dépense"
-        footer={
+        filters={(
           <>
-            <Button variant="outline" onClick={() => setShowAddModal(false)}>Annuler</Button>
-            <Button onClick={handleSubmit} loading={saving}>Enregistrer</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <Input
-            label="Désignation"
-            required
-            placeholder="Ex: Achat herbicide"
-            value={form.designation}
-            onChange={(e) => setForm({ ...form, designation: e.target.value })}
-            error={formErrors.designation}
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select
-              label="Catégorie"
-              required
-              options={categoriesSaisie}
-              placeholder="Choisir"
-              value={form.categorie_id}
-              onChange={(e) => setForm({ ...form, categorie_id: e.target.value })}
-              error={formErrors.categorie_id}
-              hint="Les achats aux particuliers se saisissent dans « Achats particuliers »."
+              value={filterCategorie}
+              onChange={(e) => setFilterCategorie(e.target.value)}
+              options={categories.map((c) => ({ value: c.id, label: c.libelle }))}
+              placeholder="Catégorie" emptyLabel="Toutes les catégories"
+              className="w-full sm:w-40"
             />
-            <Input
-              label="Montant (FCFA)"
-              required
-              type="number"
-              min="0"
-              placeholder="0"
-              value={form.montant_total}
-              onChange={(e) => setForm({ ...form, montant_total: e.target.value })}
-              error={formErrors.montant_total}
-            />
-          </div>
-          <BlocPicker
-            campements={campements}
-            blocs={blocs}
-            value={form}
-            onChange={(v) => setForm({ ...form, ...v })}
-            required
-            errors={formErrors}
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="Date"
-              required
-              type="date"
-              max={today()}
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
-              error={formErrors.date}
-            />
+            <FiltrePeriode value={periode} onChange={setPeriode} />
             <Select
-              label="Statut"
+              value={filterStatut}
+              onChange={(e) => setFilterStatut(e.target.value)}
               options={Object.entries(STATUT_DEPENSE_LABELS).map(([value, label]) => ({ value, label }))}
-              placeholder=""
-              value={form.statut}
-              onChange={(e) => setForm({ ...form, statut: e.target.value || 'NON_PAYEE' })}
-              error={formErrors.statut}
+              placeholder="Statut" emptyLabel="Tous les statuts"
+              className="w-full sm:w-40"
             />
-          </div>
-        </div>
-      </Modal>
+            <BlocPicker mode="filter" campements={campements} blocs={blocs} value={filtreBloc} onChange={setFiltreBloc} />
+          </>
+        )}
+        filtersActive={compterFiltres(filterCategorie, filterStatut, filtreBloc.campement_id, filtreBloc.bloc_id) + (periodeActive(periode) ? 1 : 0)}
+        onResetFilters={() => {
+          setFilterCategorie(''); setFilterStatut(''); setFiltreBloc({ campement_id: '', bloc_id: '' }); setPeriode(PERIODE_VIDE);
+        }}
+        emptyTitle={periodeActive(periode) ? 'Aucune dépense sur cette période' : 'Aucune dépense'}
+        emptyAction={<Button size="sm" onClick={() => ouvrir()}><Plus size={14} /> Nouvelle dépense</Button>}
+      />
+      {dialogue}
+      {dialogueSource}
+
+      <DepenseFormulaire
+        edition={edition} enModification={enModification} form={form} setForm={setForm} formErrors={formErrors} saving={saving}
+        onClose={() => setEdition(null)} onSubmit={handleSubmit} categoriesSaisie={categoriesSaisie} campements={campements} blocs={blocs}
+      />
     </div>
   );
 }

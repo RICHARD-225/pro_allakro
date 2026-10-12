@@ -11,7 +11,7 @@ export default function ErrorState({
         <AlertCircle size={24} className="text-earth-600" />
       </div>
       <h3 className="text-sm font-semibold text-ink-700">Erreur</h3>
-      <p className="mt-1 text-sm text-ink-400 max-w-sm">{message}</p>
+      <p className="mt-1 text-sm text-ink-500 max-w-sm">{message}</p>
       {onRetry && (
         <Button variant="outline" size="sm" className="mt-4" onClick={onRetry}>
           <RefreshCw size={14} />

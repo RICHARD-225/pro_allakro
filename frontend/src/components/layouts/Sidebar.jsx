@@ -3,8 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard, Trees, Users, HardHat, Wallet,
   Package, ShoppingBag, FileBarChart, Settings, ChevronLeft, ChevronDown,
-  Sprout, Leaf, TreePine, UserCircle, Shield, ScrollText,
-  Tags, PenTool, CreditCard, TrendingUp, History, HandCoins, UserCog,
+  Sprout, Leaf, TreePine, UserCircle, ScrollText,
+  Tags, ListChecks, CreditCard, History, UserCog,
 } from 'lucide-react';
 import { APP_NAME, APP_TAGLINE, ROLE } from '@/constants';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,7 +12,8 @@ import { useAuth } from '@/contexts/AuthContext';
 // Lien principal hors section
 const HOME = { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard };
 
-// Sections repliables : seule la section de la page courante est ouverte par défaut
+// Sections repliables : seule la section de la page courante est ouverte par défaut.
+// Une entrée avec `to` (sans `items`) est un lien direct.
 const NAV_SECTIONS = [
   {
     title: 'Exploitation',
@@ -23,31 +24,23 @@ const NAV_SECTIONS = [
       { to: '/blocs', label: 'Blocs / Parcelles', icon: Leaf },
     ],
   },
-  {
-    title: 'Personnel',
-    icon: Users,
-    items: [
-      { to: '/personnes', label: 'Personnes', icon: Users },
-      { to: '/equipes', label: 'Équipes', icon: Shield },
-    ],
-  },
+  // Les équipes se créent avec les travaux
+  { title: 'Personnes', to: '/personnes', icon: Users },
   {
     title: 'Travaux',
     icon: HardHat,
     items: [
       { to: '/travaux', label: 'Travaux', icon: HardHat },
-      { to: '/types-travaux', label: 'Types de travaux', icon: PenTool },
+      { to: '/types-travaux', label: 'Activités', icon: ListChecks },
     ],
   },
   {
     title: 'Finances',
     icon: Wallet,
     items: [
+      { to: '/salaires', label: 'Salaires', icon: Wallet },
       { to: '/depenses', label: 'Dépenses', icon: CreditCard },
       { to: '/categories', label: 'Catégories', icon: Tags },
-      { to: '/remunerations', label: 'Rémunérations', icon: Wallet },
-      { to: '/paiements', label: 'Paiements', icon: HandCoins },
-      { to: '/previsions', label: 'Prévisions', icon: TrendingUp },
     ],
   },
   {
@@ -80,7 +73,7 @@ const NAV_SECTIONS = [
 // Paramètres du compte (mot de passe, apparence) : accessibles à tous les rôles
 const PARAMETRES = { to: '/parametres', label: 'Paramètres', icon: Settings };
 
-const isInSection = (section, pathname) => section.items.some((i) => pathname === i.to || pathname.startsWith(`${i.to}/`));
+const isInSection = (section, pathname) => (section.items || []).some((i) => pathname === i.to || pathname.startsWith(`${i.to}/`));
 
 function NavItem({ item, collapsed, onClick, nested = false }) {
   const Icon = item.icon;
@@ -89,12 +82,12 @@ function NavItem({ item, collapsed, onClick, nested = false }) {
       to={item.to}
       onClick={onClick}
       className={({ isActive }) =>
-        `nav-item ${isActive ? 'nav-item-active' : ''} ${collapsed ? 'justify-center px-2' : ''} ${nested && !collapsed ? 'py-1.5 pl-9' : ''}`
+        `side-item ${isActive ? 'side-item-active' : ''} ${collapsed ? 'justify-center px-2' : ''} ${nested && !collapsed ? 'py-1.5 pl-9' : ''}`
       }
       title={collapsed ? item.label : undefined}
       aria-label={item.label}
     >
-      {(!nested || collapsed) && <Icon size={18} className="nav-item-icon shrink-0" />}
+      {(!nested || collapsed) && <Icon size={18} className="side-item-icon shrink-0" />}
       {!collapsed && <span className="truncate">{item.label}</span>}
     </NavLink>
   );
@@ -128,14 +121,14 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
   const content = (
     <>
       {/* Logo / Brand */}
-      <div className={`flex items-center gap-3 px-4 h-16 border-b border-ink-100 shrink-0 ${collapsed ? 'justify-center' : ''}`}>
-        <div className="w-9 h-9 rounded-lg bg-forest-600 flex items-center justify-center shrink-0">
-          <Trees size={20} className="text-white" />
+      <div className={`flex items-center gap-3 px-4 h-16 border-b app-sidebar-divider shrink-0 ${collapsed ? 'justify-center' : ''}`}>
+        <div className="w-9 h-9 rounded-lg bg-white/15 ring-1 ring-white/20 flex items-center justify-center shrink-0">
+          <Trees size={20} className="text-leaf-300" />
         </div>
         {!collapsed && (
           <div className="min-w-0">
-            <p className="text-sm font-bold text-forest-800 leading-tight">{APP_NAME}</p>
-            <p className="text-2xs text-ink-400 leading-tight">{APP_TAGLINE}</p>
+            <p className="text-base font-bold tracking-wide text-white leading-tight">{APP_NAME}</p>
+            <p className="text-2xs text-forest-200 leading-tight">{APP_TAGLINE}</p>
           </div>
         )}
       </div>
@@ -146,13 +139,16 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
 
         {sections.map((section) => {
           const SectionIcon = section.icon;
+          if (section.to) {
+            return <NavItem key={section.to} item={{ to: section.to, label: section.title, icon: section.icon }} collapsed={collapsed} onClick={onCloseMobile} />;
+          }
           const open = openSections.has(section.title);
           const active = isInSection(section, pathname);
 
           // Sidebar repliée : on affiche directement les icônes des pages
           if (collapsed) {
             return (
-              <div key={section.title} className="pt-2 mt-2 border-t border-ink-100 space-y-0.5">
+              <div key={section.title} className="pt-2 mt-2 border-t app-sidebar-divider space-y-0.5">
                 {section.items.map((item) => (
                   <NavItem key={item.to} item={item} collapsed onClick={onCloseMobile} />
                 ))}
@@ -166,11 +162,11 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
                 type="button"
                 onClick={() => toggleSection(section.title)}
                 aria-expanded={open}
-                className={`nav-item w-full ${active && !open ? 'text-forest-700 font-medium' : ''}`}
+                className={`side-item w-full ${active && !open ? 'side-item-active' : ''}`}
               >
-                <SectionIcon size={18} className="nav-item-icon shrink-0" />
+                <SectionIcon size={18} className="side-item-icon shrink-0" />
                 <span className="flex-1 truncate text-left">{section.title}</span>
-                <ChevronDown size={14} className={`shrink-0 text-ink-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+                <ChevronDown size={14} className={`shrink-0 text-forest-200 transition-transform ${open ? 'rotate-180' : ''}`} />
               </button>
               {open && (
                 <div className="mt-0.5 space-y-0.5 animate-fade-in">
@@ -183,16 +179,16 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
           );
         })}
 
-        <div className="pt-2 mt-2 border-t border-ink-100">
+        <div className="pt-2 mt-2 border-t app-sidebar-divider">
           <NavItem item={PARAMETRES} collapsed={collapsed} onClick={onCloseMobile} />
         </div>
       </nav>
 
       {/* Collapse toggle — desktop only */}
-      <div className="hidden lg:flex items-center justify-center border-t border-ink-100 py-2 shrink-0">
+      <div className="hidden lg:flex items-center justify-center border-t app-sidebar-divider py-2 shrink-0">
         <button
           onClick={onToggleCollapse}
-          className="p-1.5 rounded-lg text-ink-400 hover:bg-ink-50 hover:text-ink-600 transition-colors"
+          className="p-1.5 rounded-lg text-forest-200 hover:bg-white/10 hover:text-white transition-colors"
           aria-label={collapsed ? 'Déplier la sidebar' : 'Replier la sidebar'}
         >
           <ChevronLeft size={18} className={`transition-transform ${collapsed ? 'rotate-180' : ''}`} />
@@ -205,7 +201,7 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
     <>
       {/* Desktop sidebar */}
       <aside
-        className={`hidden lg:flex flex-col bg-white border-r border-ink-100 transition-all duration-200 shrink-0 ${
+        className={`app-sidebar hidden lg:flex flex-col border-r border-forest-900 transition-all duration-200 shrink-0 ${
           collapsed ? 'w-16' : 'w-60'
         }`}
       >
@@ -216,7 +212,7 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50 animate-fade-in">
           <div className="absolute inset-0 bg-ink-950/40 backdrop-blur-sm" onClick={onCloseMobile} />
-          <aside className="absolute left-0 top-0 bottom-0 w-64 bg-white flex flex-col animate-slide-in-left shadow-soft-lg">
+          <aside className="app-sidebar absolute left-0 top-0 bottom-0 w-64 flex flex-col animate-slide-in-left shadow-soft-lg pt-[env(safe-area-inset-top)]">
             {content}
           </aside>
         </div>

@@ -1,30 +1,45 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Leaf, MapPin, Calendar, HardHat, Wallet, Package, Users, BarChart3 } from 'lucide-react';
-import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ArrowLeft, Leaf, MapPin, HardHat, Wallet, Users, BarChart3, Sprout } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
-import { Card, Badge, ErrorState, Skeleton } from '@/components/ui';
-import { blocsService, travauxService, depensesService, equipesService } from '@/services';
-import { formatFCFA, formatDate, formatPeriode } from '@/utils/format';
-import { CHART_COLORS, STATUT_TRAVAIL_LABELS } from '@/constants';
+import PersonneDetail from '@/components/PersonneDetail';
+import TravailDetail from '@/components/TravailDetail';
+import { Card, Badge, BarresHorizontales, ErrorState, KpiGrid, Skeleton } from '@/components/ui';
+import { blocsService, travauxService, depensesService, personnesService } from '@/services';
+import { formatFCFA, formatDate, formatNumber } from '@/utils/format';
+import { STATUT_TRAVAIL_LABELS } from '@/constants';
 
 const TABS = [
   { key: 'info', label: 'Informations', icon: MapPin },
+  { key: 'personnes', label: 'Personnes', icon: Users },
   { key: 'travaux', label: 'Travaux', icon: HardHat },
   { key: 'depenses', label: 'Dépenses', icon: Wallet },
-  { key: 'equipes', label: 'Équipes', icon: Users },
   { key: 'stats', label: 'Statistiques', icon: BarChart3 },
 ];
+
+// En-têtes en casse normale. Un code ou un nom a son style dans un <span> : sur la cellule, sa couleur se heurterait à celle de TD.
+const TH = 'px-4 py-3 text-left text-xs font-medium text-ink-500 whitespace-nowrap';
+const TD = 'px-4 py-3 text-sm text-ink-700';
+
+function Info({ label, children }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-ink-500">{label}</p>
+      <div className="text-sm font-medium text-ink-800">{children}</div>
+    </div>
+  );
+}
 
 export default function BlocDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('info');
   const [bloc, setBloc] = useState(null);
-  const [campement, setCampement] = useState(null);
   const [travaux, setTravaux] = useState([]);
   const [depenses, setDepenses] = useState([]);
-  const [equipes, setEquipes] = useState([]);
+  const [personnes, setPersonnes] = useState([]);
+  const [personneOuverte, setPersonneOuverte] = useState(null);
+  const [travailOuvert, setTravailOuvert] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,18 +48,22 @@ export default function BlocDetailPage() {
       blocsService.getById(id),
       travauxService.getByBloc(id),
       depensesService.getAll({ bloc_id: id }),
-      equipesService.getAll(),
-    ]).then(([b, t, d, e]) => {
+      personnesService.getAll({ bloc_id: id }),
+    ]).then(([b, t, d, p]) => {
       setBloc(b);
-      setCampement({ id: b.campement_id, nom: b.campement_nom });
       setTravaux(t);
       setDepenses(d);
-      // Équipe affectée au bloc + équipes y ayant réalisé des travaux
-      const equipeIds = new Set(t.map((x) => x.equipe_id));
-      setEquipes(e.filter((x) => x.bloc_id === id || equipeIds.has(x.id)));
-      setLoading(false);
-    }).catch(() => setLoading(false));
+      setPersonnes(p);
+    }).catch(() => setBloc(null))
+      .finally(() => setLoading(false));
   }, [id]);
+
+  // Montant des travaux par activité (les unités diffèrent d'une activité à l'autre)
+  const parActivite = useMemo(() => {
+    const totaux = new Map();
+    travaux.filter((t) => t.statut !== 'ANNULE').forEach((t) => totaux.set(t.activite, (totaux.get(t.activite) || 0) + t.montant_total));
+    return [...totaux.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [travaux]);
 
   if (loading) {
     return (
@@ -58,52 +77,39 @@ export default function BlocDetailPage() {
   if (!bloc) return <ErrorState message="Bloc introuvable" onRetry={() => navigate('/blocs')} />;
 
   const totalDepenses = depenses.reduce((s, d) => s + d.montant_total, 0);
-  const totalTravaux = travaux.reduce((s, t) => s + t.montant_total, 0);
-  const quantiteTotale = travaux.reduce((s, t) => s + t.quantite, 0);
-
-  const travauxChartData = travaux.map((t) => ({ name: t.type_travail_libelle, value: t.quantite }));
+  const actives = personnes.filter((p) => p.actif).length;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <div className="flex items-center gap-3">
         <Link to="/blocs" className="p-2 rounded-lg text-ink-500 hover:bg-ink-50 transition-colors" aria-label="Retour">
           <ArrowLeft size={18} />
         </Link>
-        <PageHeader title={`${bloc.code} — ${bloc.nom}`} subtitle={campement?.nom} icon={Leaf} />
+        <div className="min-w-0 flex-1">
+          <PageHeader title={`${bloc.code} — ${bloc.nom}`} subtitle={[bloc.plantation_nom, bloc.campement_nom].filter(Boolean).join(' · ')} icon={Leaf} />
+        </div>
       </div>
 
-      {/* Quick stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Card className="p-4">
-          <p className="text-xs text-ink-500 uppercase">Superficie</p>
-          <p className="mt-1 text-xl font-bold text-ink-800 tabular-nums">{bloc.superficie} ha</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-ink-500 uppercase">Travaux</p>
-          <p className="mt-1 text-xl font-bold text-ink-800">{travaux.length}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-ink-500 uppercase">Dépenses</p>
-          <p className="mt-1 text-xl font-bold text-ink-800">{formatFCFA(totalDepenses)}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-ink-500 uppercase">Quantité réalisée</p>
-          <p className="mt-1 text-xl font-bold text-ink-800 tabular-nums">{quantiteTotale} ha</p>
-        </Card>
-      </div>
+      <KpiGrid items={[
+        { label: 'Superficie', value: formatNumber(bloc.superficie), unit: 'ha', icon: MapPin, accent: 'forest' },
+        { label: 'Plantes', value: formatNumber(bloc.nombre_plantes), icon: Sprout, accent: 'leaf' },
+        { label: 'Personnes', value: actives, icon: Users, accent: 'sage' },
+        { label: 'Travaux', value: travaux.length, icon: HardHat, accent: 'olive' },
+        { label: 'Dépenses', value: formatNumber(totalDepenses), unit: 'FCFA', icon: Wallet, accent: 'earth' },
+      ]} />
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b border-ink-100 overflow-x-auto scrollbar-none">
+      <div className="flex gap-1 border-b border-ink-100 overflow-x-auto scrollbar-none" role="tablist">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           return (
             <button
               key={tab.key}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === tab.key
-                  ? 'border-forest-600 text-forest-700'
-                  : 'border-transparent text-ink-400 hover:text-ink-600'
+                activeTab === tab.key ? 'border-forest-600 text-forest-700' : 'border-transparent text-ink-500 hover:text-ink-800'
               }`}
             >
               <Icon size={16} />
@@ -113,55 +119,82 @@ export default function BlocDetailPage() {
         })}
       </div>
 
-      {/* Tab content */}
       {activeTab === 'info' && (
-        <Card className="p-5 space-y-4 animate-fade-in">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <p className="text-xs text-ink-400 uppercase">Code</p>
-              <p className="text-sm font-medium text-ink-800 font-mono">{bloc.code}</p>
-            </div>
-            <div>
-              <p className="text-xs text-ink-400 uppercase">Nom</p>
-              <p className="text-sm font-medium text-ink-800">{bloc.nom}</p>
-            </div>
-            <div>
-              <p className="text-xs text-ink-400 uppercase">Campement</p>
-              <p className="text-sm font-medium text-ink-800">{campement?.nom || '—'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-ink-400 uppercase">Superficie</p>
-              <p className="text-sm font-medium text-ink-800 tabular-nums">{bloc.superficie} ha</p>
-            </div>
-            <div>
-              <p className="text-xs text-ink-400 uppercase">Statut</p>
-              <Badge status={bloc.actif ? 'active' : 'inactive'}>{bloc.actif ? 'Actif' : 'Inactif'}</Badge>
-            </div>
+        <Card className="p-5 animate-fade-in">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Info label="Code"><span className="tabular-nums">{bloc.code}</span></Info>
+            <Info label="Nom">{bloc.nom}</Info>
+            <Info label="Plantation · campement">{[bloc.plantation_nom, bloc.campement_nom].filter(Boolean).join(' · ') || '—'}</Info>
+            <Info label="Superficie"><span className="tabular-nums">{formatNumber(bloc.superficie)} ha</span></Info>
+            <Info label="Nombre de plantes">
+              <span className="tabular-nums">{formatNumber(bloc.nombre_plantes)}</span>
+              {Number(bloc.superficie) > 0 && (
+                <span className="ml-1 text-xs font-normal text-ink-500">
+                  (≈ {formatNumber(Math.round(bloc.nombre_plantes / bloc.superficie))} / ha)
+                </span>
+              )}
+            </Info>
+            <Info label="Statut"><Badge status={bloc.actif ? 'active' : 'inactive'}>{bloc.actif ? 'Actif' : 'Inactif'}</Badge></Info>
           </div>
         </Card>
       )}
 
-      {activeTab === 'travaux' && (
-        <Card className="overflow-hidden animate-fade-in">
+      {activeTab === 'personnes' && (
+        <Card className="overflow-x-auto animate-fade-in">
           <table className="w-full">
             <thead className="bg-cream-50/50 border-b border-ink-100">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-ink-500 uppercase">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-ink-500 uppercase">Période</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-ink-500 uppercase">Quantité</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-ink-500 uppercase">Montant</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-ink-500 uppercase">Statut</th>
+                <th className={TH}>Matricule</th>
+                <th className={TH}>Nom</th>
+                <th className={TH}>Fonction</th>
+                <th className={TH}>Téléphone</th>
+                <th className={TH}>Statut</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-ink-100/60">
+              {personnes.length === 0 ? (
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-ink-500">Aucune personne affectée à ce bloc</td></tr>
+              ) : personnes.map((p) => (
+                <tr key={p.id} className="table-row-hover cursor-pointer" onClick={() => setPersonneOuverte(p)}>
+                  <td className={TD}><span className="text-xs tabular-nums text-forest-700">{p.matricule}</span></td>
+                  <td className={TD}><span className="font-medium text-ink-800">{p.prenom} {p.nom}</span></td>
+                  <td className={TD}>{p.fonction_libelle || '—'}</td>
+                  <td className={`${TD} tabular-nums`}>{p.telephone || '—'}</td>
+                  <td className="px-4 py-3"><Badge status={p.actif ? 'active' : 'inactive'}>{p.actif ? 'Active' : 'Inactive'}</Badge></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+
+      {activeTab === 'travaux' && (
+        <Card className="overflow-x-auto animate-fade-in">
+          <table className="w-full">
+            <thead className="bg-cream-50/50 border-b border-ink-100">
+              <tr>
+                <th className={TH}>Activité</th>
+                <th className={TH}>Équipe / responsable</th>
+                <th className={TH}>Dates</th>
+                <th className={TH}>Quantité</th>
+                <th className={TH}>Montant</th>
+                <th className={TH}>Statut</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-ink-100/60">
               {travaux.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-ink-400">Aucun travail enregistré</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-ink-500">Aucun travail enregistré</td></tr>
               ) : travaux.map((t) => (
-                <tr key={t.id} className="table-row-hover">
-                  <td className="px-4 py-3 text-sm text-ink-700">{t.type_travail_libelle}</td>
-                  <td className="px-4 py-3 text-sm text-ink-600">{formatPeriode(t.periode)}</td>
-                  <td className="px-4 py-3 text-sm text-ink-700 tabular-nums">{t.quantite} {t.unite}</td>
-                  <td className="px-4 py-3 text-sm text-ink-700 tabular-nums">{formatFCFA(t.montant_total)}</td>
+                <tr key={t.id} className="table-row-hover cursor-pointer" onClick={() => setTravailOuvert(t)}>
+                  <td className={TD}><span className="font-medium text-ink-800">{t.activite}</span></td>
+                  <td className={TD}>
+                    {t.equipe_nom ? (
+                      <>{t.equipe_nom}<span className="block text-xs text-ink-500">Chef : {t.responsable_nom}</span></>
+                    ) : (t.responsable_nom || '—')}
+                  </td>
+                  <td className={`${TD} whitespace-nowrap text-xs tabular-nums`}>{formatDate(t.date_travail)} → {formatDate(t.date_fin)}</td>
+                  <td className={`${TD} tabular-nums whitespace-nowrap`}>{formatNumber(t.quantite)} {t.unite}</td>
+                  <td className={`${TD} tabular-nums whitespace-nowrap`}>{formatFCFA(t.montant_total)}</td>
                   <td className="px-4 py-3"><Badge status={t.statut}>{STATUT_TRAVAIL_LABELS[t.statut] || t.statut}</Badge></td>
                 </tr>
               ))}
@@ -171,25 +204,25 @@ export default function BlocDetailPage() {
       )}
 
       {activeTab === 'depenses' && (
-        <Card className="overflow-hidden animate-fade-in">
+        <Card className="overflow-x-auto animate-fade-in">
           <table className="w-full">
             <thead className="bg-cream-50/50 border-b border-ink-100">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-ink-500 uppercase">Description</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-ink-500 uppercase">Catégorie</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-ink-500 uppercase">Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-ink-500 uppercase">Montant</th>
+                <th className={TH}>Description</th>
+                <th className={TH}>Catégorie</th>
+                <th className={TH}>Date</th>
+                <th className={TH}>Montant</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-ink-100/60">
               {depenses.length === 0 ? (
-                <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-ink-400">Aucune dépense enregistrée</td></tr>
+                <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-ink-500">Aucune dépense enregistrée</td></tr>
               ) : depenses.map((d) => (
                 <tr key={d.id} className="table-row-hover">
-                  <td className="px-4 py-3 text-sm text-ink-700">{d.designation}</td>
-                  <td className="px-4 py-3 text-sm text-ink-600">{d.categorie}</td>
-                  <td className="px-4 py-3 text-sm text-ink-600">{formatDate(d.date)}</td>
-                  <td className="px-4 py-3 text-sm text-ink-700 tabular-nums">{formatFCFA(d.montant_total)}</td>
+                  <td className={TD}>{d.designation}</td>
+                  <td className={`${TD} text-ink-600`}>{d.categorie}</td>
+                  <td className={`${TD} text-ink-600 whitespace-nowrap tabular-nums`}>{formatDate(d.date)}</td>
+                  <td className={`${TD} tabular-nums whitespace-nowrap`}>{formatFCFA(d.montant_total)}</td>
                 </tr>
               ))}
             </tbody>
@@ -197,53 +230,21 @@ export default function BlocDetailPage() {
         </Card>
       )}
 
-      {activeTab === 'equipes' && (
+      {activeTab === 'stats' && (
         <Card className="p-5 animate-fade-in">
-          {equipes.length === 0 ? (
-            <p className="text-sm text-ink-400 text-center py-8">Aucune équipe affectée ou ayant travaillé sur ce bloc</p>
+          <h3 className="text-sm font-semibold text-ink-800 mb-4">Montant des travaux par activité (FCFA, hors annulés)</h3>
+          {parActivite.length === 0 ? (
+            <p className="text-sm text-ink-500 text-center py-8">Aucune donnée disponible</p>
           ) : (
-            <div className="space-y-2">
-              {equipes.map((e) => (
-                <div key={e.id} className="flex items-center justify-between p-3 rounded-lg bg-cream-50/50 border border-ink-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-sage-50 flex items-center justify-center">
-                      <Users size={16} className="text-sage-700" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-ink-800">{e.nom}</p>
-                      <p className="text-xs text-ink-400">{e.code} · {e.nb_membres} membre(s){e.bloc_id === bloc.id ? ' · affectée à ce bloc' : ''}</p>
-                    </div>
-                  </div>
-                  <Badge status={e.actif ? 'active' : 'inactive'}>{e.actif ? 'Actif' : 'Inactif'}</Badge>
-                </div>
-              ))}
-            </div>
+            <BarresHorizontales data={parActivite} series={[{ cle: 'value', nom: 'Montant', couleur: '#519744' }]} />
           )}
         </Card>
       )}
 
-      {activeTab === 'stats' && (
-        <Card className="p-5 animate-fade-in">
-          <h3 className="text-sm font-semibold text-ink-800 mb-4">Travaux par type (ha)</h3>
-          {travauxChartData.length === 0 ? (
-            <p className="text-sm text-ink-400 text-center py-8">Aucune donnée disponible</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={travauxChartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e7e9e7" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#888f88' }} axisLine={false} tickLine={false} angle={-20} textAnchor="end" height={50} />
-                <YAxis tick={{ fontSize: 11, fill: '#888f88' }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e7e9e7', borderRadius: '8px', fontSize: '12px' }} />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                  {travauxChartData.map((_, i) => (
-                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </Card>
-      )}
+      <PersonneDetail personne={personneOuverte} onClose={() => setPersonneOuverte(null)}
+        onChange={(p) => { setPersonnes((d) => d.map((x) => (x.id === p.id ? p : x))); setPersonneOuverte(p); }} />
+      <TravailDetail travail={travailOuvert} onClose={() => setTravailOuvert(null)}
+        onChange={(t) => { setTravaux((d) => d.map((x) => (x.id === t.id ? t : x))); setTravailOuvert(t); }} />
     </div>
   );
 }

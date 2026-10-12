@@ -72,10 +72,29 @@ function buildUrl(path, params) {
   return `${API_BASE_URL}${path}${qs ? `?${qs}` : ''}`;
 }
 
+// --- Protection CSRF : le serveur pose le cookie « csrftoken » (GET /auth/csrf/) ; chaque requête qui modifie des données
+// le renvoie dans l'en-tête X-CSRFToken. Un site tiers ne peut ni lire ce cookie ni forger l'en-tête.
+const lireCookie = (nom) => {
+  const trouve = document.cookie.split('; ').find((c) => c.startsWith(`${nom}=`));
+  return trouve ? decodeURIComponent(trouve.slice(nom.length + 1)) : '';
+};
+let csrfEnCours = null;
+async function assurerCsrf(forcer = false) {
+  if (!forcer && lireCookie('csrftoken')) return;
+  if (!csrfEnCours) {
+    csrfEnCours = fetch(`${API_BASE_URL}/auth/csrf/`, { credentials: 'include' })
+      .catch(() => null)
+      .finally(() => { csrfEnCours = null; });
+  }
+  await csrfEnCours;
+}
+const enTetesCsrf = () => ({ 'X-CSRFToken': lireCookie('csrftoken') });
+
 let refreshing = null;
 function refreshSession() {
   if (!refreshing) {
-    refreshing = fetch(`${API_BASE_URL}/auth/refresh/`, { method: 'POST', credentials: 'include' })
+    refreshing = assurerCsrf()
+      .then(() => fetch(`${API_BASE_URL}/auth/refresh/`, { method: 'POST', credentials: 'include', headers: enTetesCsrf() }))
       .then((response) => response.ok)
       .catch(() => false)
       .finally(() => { setTimeout(() => { refreshing = null; }, 0); });
@@ -83,17 +102,32 @@ function refreshSession() {
   return refreshing;
 }
 
-async function request(path, { method = 'GET', body, params, retry = true } = {}) {
+async function request(path, { method = 'GET', body, params, retry = true, csrfRetry = true } = {}) {
   let response;
+  const modifie = method !== 'GET';
   try {
+    if (modifie) await assurerCsrf();
     response = await fetch(buildUrl(path, params), {
       method,
       credentials: 'include',
-      headers: body !== undefined ? { 'Content-Type': 'application/json', Accept: 'application/json' } : { Accept: 'application/json' },
+      headers: {
+        Accept: 'application/json',
+        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(modifie ? enTetesCsrf() : {}),
+      },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch {
     throw new ApiError('Impossible de joindre le serveur. Vérifiez votre connexion.', 0, null);
+  }
+
+  // Jeton CSRF absent ou périmé : on en demande un nouveau et on rejoue la requête une fois
+  if (response.status === 403 && modifie && csrfRetry) {
+    const donnees = await response.clone().json().catch(() => null);
+    if (donnees?.code === 'csrf') {
+      await assurerCsrf(true);
+      return request(path, { method, body, params, retry, csrfRetry: false });
+    }
   }
 
   if (response.status === 401 && retry && !SANS_RAFRAICHISSEMENT.includes(path)) {

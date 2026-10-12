@@ -34,7 +34,7 @@ export default function AuthLayout() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
+    <main className="min-h-screen flex flex-col lg:flex-row">
       {/* Left panel — branding */}
       <div className="w-full lg:w-1/2 relative overflow-hidden min-h-[260px] lg:min-h-screen">
         <div
@@ -94,12 +94,12 @@ export default function AuthLayout() {
             </div>
             <div>
               <p className="text-base font-bold text-forest-800">{APP_NAME}</p>
-              <p className="text-2xs text-ink-400">{APP_TAGLINE}</p>
+              <p className="text-xs text-ink-500">{APP_TAGLINE}</p>
             </div>
           </div>
           <Outlet />
         </div>
       </div>
-    </div>
+    </main>
   );
 }

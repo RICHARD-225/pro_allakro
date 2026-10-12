@@ -1,85 +1,218 @@
 import { useState, useEffect, useMemo } from 'react';
-import { HardHat, Plus } from 'lucide-react';
+import { HardHat, Plus, Ban, RotateCcw } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
-import BlocPicker, { matchBlocFilter, buildBlocFilter } from '@/components/BlocPicker';
-import { DataTable, Badge, Button, ErrorState, Select, Modal, Input } from '@/components/ui';
+import RowActions from '@/components/RowActions';
+import TravailDetail from '@/components/TravailDetail';
+import BlocPicker from '@/components/BlocPicker';
+import TravailFormulaire from '@/pages/travaux/TravailFormulaire';
+import { colonnesTravaux } from '@/pages/travaux/colonnes';
+import { DataTable, Button, ErrorState, Select } from '@/components/ui';
+import { compterFiltres } from '@/components/ui/Filtres';
 import { useToast } from '@/contexts/ToastContext';
-import { travauxService, blocsService, equipesService, campementsService, typesTravauxService } from '@/services';
-import { formatFCFA, formatDate, formatNumber } from '@/utils/format';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSuppression } from '@/hooks/useSuppression';
+import { useListeServeur } from '@/hooks/useListeServeur';
+import { travauxService, blocsService, campementsService, activitesService, personnesService, unitesService } from '@/services';
+import { formatFCFA } from '@/utils/format';
 import { showServerErrors, today } from '@/utils/errors';
-import { STATUT_TRAVAIL_LABELS } from '@/constants';
+import { ROLE, STATUT_TRAVAIL_LABELS } from '@/constants';
 
-const emptyForm = () => ({
-  type_travail_id: '', campement_id: '', bloc_id: '', equipe_id: '', date_travail: today(),
-  quantite: '', unite: 'ha', prix_unitaire: '', statut: 'PLANIFIE',
+const UNITE_PAR_DEFAUT = 'ha';
+
+const formulaireVide = (unite = UNITE_PAR_DEFAUT) => ({
+  type_travail_id: '', activite_autre: '', campement_id: '', bloc_id: '', date_travail: today(), date_fin: today(),
+  unite, quantite: '', prix_unitaire: '', nombre_jours: '', observation: '',
+  personnes_ids: [], chef_id: '', equipe_nom: '',
+  avance_oui: false, avance_montant: '', avance_beneficiaire_id: '', avance_type: 'ESPECES', avance_date: today(),
 });
 
+// Même règle que le serveur : À venir → En cours → Terminé selon les dates
+function statutSelonDates(debut, fin) {
+  const jour = today();
+  if (debut && debut > jour) return 'PLANIFIE';
+  if (fin && fin < jour) return 'TERMINE';
+  return 'EN_COURS';
+}
+
+const nombre = (valeur) => (valeur === '' || valeur == null ? '' : String(Number(valeur)));
+
 export default function TravauxPage() {
-  const [data, setData] = useState([]);
+  const { user } = useAuth();
+  const isBoss = user?.role === ROLE.BIG_BOSS;
+  const toast = useToast();
   const [blocs, setBlocs] = useState([]);
   const [campements, setCampements] = useState([]);
-  const [equipes, setEquipes] = useState([]);
-  const [types, setTypes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [activites, setActivites] = useState([]);
+  const [personnes, setPersonnes] = useState([]);
+  const [unites, setUnites] = useState({ defaut: UNITE_PAR_DEFAUT, unites: [] });
   const [error, setError] = useState(false);
-  const [filterType, setFilterType] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filtreActivite, setFiltreActivite] = useState('');
+  const [filtreStatut, setFiltreStatut] = useState('');
   const [filtreBloc, setFiltreBloc] = useState({ campement_id: '', bloc_id: '' });
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [form, setForm] = useState(emptyForm);
+  const [edition, setEdition] = useState(null); // null fermé · 'nouveau' · travail modifié
+  const [detail, setDetail] = useState(null);
+  const [form, setForm] = useState(formulaireVide);
   const [formErrors, setFormErrors] = useState({});
   const [saving, setSaving] = useState(false);
-  const toast = useToast();
+  const enModification = edition && edition !== 'nouveau';
+
+  // Liste paginée par le serveur : page, recherche, tri et filtres (activité, statut, campement / bloc)
+  const { lignes, serveur, chargement: loading, erreur, recharger } = useListeServeur({
+    charger: (p) => travauxService.page(p),
+    filtres: { type_travail_id: filtreActivite, statut: filtreStatut, campement_id: filtreBloc.campement_id, bloc_id: filtreBloc.bloc_id },
+  });
+  useEffect(() => { if (erreur) setError(true); }, [erreur]);
 
   useEffect(() => {
-    Promise.all([travauxService.getAll(), blocsService.getAll(), equipesService.getAll(), campementsService.getAll(), typesTravauxService.getAll()])
-      .then(([t, b, e, c, tt]) => {
-        setData(t);
+    Promise.all([
+      blocsService.getAll(), campementsService.getAll(), activitesService.getAll(),
+      personnesService.getAll(), unitesService.getAll(),
+    ])
+      .then(([b, c, a, p, u]) => {
         setBlocs(b);
-        setEquipes(e);
         setCampements(c);
-        setTypes(tt);
-        setLoading(false);
+        setActivites(a);
+        setPersonnes(p);
+        setUnites(u);
       })
-      .catch(() => { setError(true); setLoading(false); });
+      .catch(() => setError(true));
   }, []);
 
-  // Montant affiché pendant la saisie ; le serveur le recalcule à l'enregistrement
+  const remplacer = (travail) => {
+    setDetail((courant) => (courant && courant.id === travail.id ? travail : courant));
+    recharger();
+  };
+
+  const { demander: demanderSuppression, dialogue: dialogueSuppression } = useSuppression({
+    supprimer: (row) => travauxService.remove(row.id),
+    apres: () => { recharger(); setDetail(null); },
+    titre: 'Supprimer le travail',
+    message: (row) => `Supprimer le travail « ${row.activite} » du bloc ${row.bloc_code} ? Sa rémunération (aucun paiement à ce jour) `
+      + 'et son équipe sont supprimées avec lui. Cette action est irréversible ; pour garder une trace, annulez-le plutôt.',
+    succes: (row) => `Travail « ${row.activite} » supprimé`,
+  });
+
+  const { demander: demanderAnnulation, dialogue: dialogueAnnulation } = useSuppression({
+    supprimer: async (row) => remplacer(await travauxService.annuler(row.id)),
+    titre: "Annuler le travail",
+    libelleBouton: 'Annuler le travail',
+    message: (row) => `Annuler « ${row.activite} » (${row.bloc_code}), quel que soit son statut ? Le travail et sa rémunération `
+      + "ne sont plus comptés (totaux, tableau de bord, Excel) et ne sont plus payables."
+      + (row.nb_paiements > 0
+        ? ` Ses ${row.nb_paiements} paiement(s) (${formatFCFA(row.montant_paiements)}) sont annulés avec lui et leurs dépenses disparaissent.`
+        : '')
+      + ' Tout reste consultable dans l\'historique, et « Rétablir » remet tout en vigueur.',
+    succes: (row) => `Travail « ${row.activite} » annulé`,
+  });
+
+  const retablir = async (row) => {
+    try {
+      remplacer(await travauxService.retablir(row.id));
+      toast.success(`Travail « ${row.activite} » rétabli`);
+    } catch (err) {
+      showServerErrors(err, { toast });
+    }
+  };
+
+  const activiteChoisie = activites.find((a) => a.id === form.type_travail_id);
+  const blocChoisi = blocs.find((b) => b.id === form.bloc_id);
   const montant = (Number(form.quantite) || 0) * (Number(form.prix_unitaire) || 0);
+  const enEquipe = form.personnes_ids.length >= 2;
+  const personneDe = (id) => personnes.find((p) => p.id === id);
+  const nomDe = (id) => {
+    const p = personneDe(id);
+    return p ? `${p.prenom} ${p.nom}` : '';
+  };
+  const titulaire = enEquipe ? form.chef_id : form.personnes_ids[0] || '';
+  const statutPrevu = statutSelonDates(form.date_travail, form.date_fin);
+  const avanceExistante = enModification ? edition.avance : null;
+  const nomEquipeParDefaut = activiteChoisie && blocChoisi
+    ? `Équipe ${(activiteChoisie.precision_requise ? form.activite_autre || 'Autre' : activiteChoisie.libelle).toLowerCase()
+      .replace(/(^|[^a-zà-ÿ])([a-zà-ÿ])/g, (m, avant, lettre) => avant + lettre.toUpperCase())} ${blocChoisi.code}`
+    : 'Équipe …';
+  // « Plus d'options » (nombre de jours, observation) : ouvert d'emblée s'ils sont déjà renseignés (modification) ou en erreur
+  const optionsRenseignees = form.nombre_jours !== '' || form.observation.trim() !== '';
+  const erreurOptions = !!(formErrors.nombre_jours || formErrors.observation);
 
-  // Équipes proposées : celles du campement choisi, l'équipe affectée au bloc en premier
-  const equipesProposees = useMemo(() => {
-    const actives = equipes.filter((e) => e.actif);
-    const list = form.campement_id ? actives.filter((e) => e.campement_id === form.campement_id) : actives;
-    return [...list].sort((a, b) => (b.bloc_id === form.bloc_id) - (a.bloc_id === form.bloc_id));
-  }, [equipes, form.campement_id, form.bloc_id]);
+  // Personnes proposées : actives (et celles déjà sur le travail), celles du bloc choisi en premier
+  const optionsPersonnes = useMemo(() => {
+    const dejaLa = new Set(enModification ? edition.personnes_ids : []);
+    return personnes
+      .filter((p) => p.actif || dejaLa.has(p.id))
+      .sort((a, b) => ((b.bloc_id === form.bloc_id) - (a.bloc_id === form.bloc_id))
+        || `${a.prenom} ${a.nom}`.localeCompare(`${b.prenom} ${b.nom}`, 'fr'))
+      .map((p) => ({
+        value: p.id,
+        label: `${p.prenom} ${p.nom}`,
+        hint: [p.matricule, p.bloc_code || 'sans bloc', p.fonction_libelle].filter(Boolean).join(' · '),
+      }));
+  }, [personnes, form.bloc_id, edition, enModification]);
 
-  const filtered = useMemo(() => {
-    const f = buildBlocFilter(filtreBloc, blocs);
-    return data.filter((t) => (!filterType || t.type_travail_id === filterType)
-      && (!filterStatus || t.statut === filterStatus)
-      && matchBlocFilter(t, f));
-  }, [data, filterType, filterStatus, filtreBloc, blocs]);
-
-  const choisirType = (id) => {
-    const type = types.find((t) => t.id === id);
-    setForm((f) => ({ ...f, type_travail_id: id, unite: type?.unite_par_defaut || f.unite }));
+  const ouvrir = (travail = null) => {
+    if (travail) {
+      setForm({
+        type_travail_id: travail.type_travail_id,
+        activite_autre: travail.activite_autre || '',
+        campement_id: travail.campement_id,
+        bloc_id: travail.bloc_id,
+        date_travail: travail.date_travail,
+        date_fin: travail.date_fin || travail.date_travail,
+        unite: travail.unite || unites.defaut,
+        quantite: nombre(travail.quantite),
+        prix_unitaire: nombre(travail.prix_unitaire),
+        nombre_jours: Number(travail.nombre_jours) ? nombre(travail.nombre_jours) : '',
+        observation: travail.observation || '',
+        personnes_ids: travail.personnes_ids || [],
+        chef_id: travail.chef_id || '',
+        equipe_nom: travail.equipe_nom || '',
+        avance_oui: !!travail.avance,
+        avance_montant: travail.avance ? nombre(travail.avance.montant) : '',
+        avance_beneficiaire_id: travail.avance?.beneficiaire_id || '',
+        avance_type: travail.avance?.type_paiement || 'ESPECES',
+        avance_date: travail.avance?.date || today(),
+      });
+    } else {
+      setForm(formulaireVide(unites.defaut));
+    }
+    setFormErrors({});
+    setDetail(null);
+    setEdition(travail || 'nouveau');
   };
 
-  const choisirBloc = (v) => {
-    // Propose automatiquement l'équipe affectée au bloc
-    const equipeDuBloc = equipes.find((e) => e.actif && e.bloc_id && e.bloc_id === v.bloc_id);
-    setForm((f) => ({ ...f, ...v, equipe_id: equipeDuBloc?.id || f.equipe_id }));
+  const maj = (patch) => setForm((f) => ({ ...f, ...patch }));
+
+  const choisirActivite = (id) => {
+    const activite = activites.find((a) => a.id === id);
+    maj({ type_travail_id: id, unite: activite?.unite_par_defaut || form.unite });
   };
+
+  const choisirPersonnes = (ids) => setForm((f) => ({
+    ...f,
+    personnes_ids: ids,
+    chef_id: ids.length >= 2 && ids.includes(f.chef_id) ? f.chef_id : '',
+    avance_beneficiaire_id: ids.includes(f.avance_beneficiaire_id) ? f.avance_beneficiaire_id : '',
+  }));
 
   const validate = () => {
     const errs = {};
-    if (!form.type_travail_id) errs.type_travail_id = 'Le type est obligatoire';
+    if (!form.type_travail_id) errs.type_travail_id = "L'activité est obligatoire";
+    if (activiteChoisie?.precision_requise && !form.activite_autre.trim()) errs.activite_autre = "Précisez le nom de l'activité";
     if (!form.bloc_id) errs.bloc_id = 'Le bloc est obligatoire';
-    if (!form.equipe_id) errs.equipe_id = "L'équipe est obligatoire";
-    if (!form.date_travail) errs.date_travail = 'La date est obligatoire';
+    if (!form.date_travail) errs.date_travail = 'La date de début est obligatoire';
+    if (!form.date_fin) errs.date_fin = 'La date de fin est obligatoire';
+    else if (form.date_travail && form.date_fin < form.date_travail) errs.date_fin = 'La date de fin doit suivre la date de début';
+    if (!form.unite) errs.unite = "L'unité est obligatoire";
     if (!(Number(form.quantite) > 0)) errs.quantite = 'La quantité doit être supérieure à 0';
-    if (form.prix_unitaire === '' || Number(form.prix_unitaire) < 0) errs.prix_unitaire = 'Le prix unitaire est obligatoire';
+    if (form.prix_unitaire === '' || !(Number(form.prix_unitaire) >= 0)) errs.prix_unitaire = 'Le prix unitaire est obligatoire';
+    if (form.nombre_jours !== '' && !(Number(form.nombre_jours) >= 0)) errs.nombre_jours = 'Nombre de jours invalide';
+    if (form.personnes_ids.length === 0) errs.personnes_ids = 'Sélectionnez au moins une personne';
+    if (enEquipe && !form.chef_id) errs.chef_id = "Choisissez le chef d'équipe";
+    if (form.avance_oui) {
+      if (!(Number(form.avance_montant) > 0)) errs.avance_montant = "Le montant de l'avance doit être supérieur à 0";
+      else if (Number(form.avance_montant) > montant) errs.avance_montant = `L'avance ne peut pas dépasser ${formatFCFA(montant)}`;
+      if (!form.avance_date) errs.avance_date = "La date de l'avance est obligatoire";
+      else if (form.avance_date > today()) errs.avance_date = 'La date ne peut pas être dans le futur';
+    }
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -87,167 +220,128 @@ export default function TravauxPage() {
   const handleSubmit = async () => {
     if (!validate()) return;
     setSaving(true);
+    const payload = {
+      type_travail_id: form.type_travail_id,
+      activite_autre: activiteChoisie?.precision_requise ? form.activite_autre.trim() : '',
+      bloc_id: form.bloc_id,
+      date_travail: form.date_travail,
+      date_fin: form.date_fin,
+      unite: form.unite,
+      quantite: Number(form.quantite),
+      prix_unitaire: Number(form.prix_unitaire),
+      nombre_jours: Number(form.nombre_jours) || 0,
+      observation: form.observation.trim(),
+      personnes_ids: form.personnes_ids,
+      chef_id: enEquipe ? form.chef_id : null,
+      equipe_nom: enEquipe ? form.equipe_nom.trim() : '',
+    };
+    if (form.avance_oui) {
+      payload.avance = {
+        montant: Number(form.avance_montant),
+        beneficiaire_id: form.avance_beneficiaire_id || titulaire || null,
+        type_paiement: form.avance_type,
+        date: form.avance_date,
+      };
+    } else if (avanceExistante) {
+      payload.avance = null; // suppression de l'avance (Big Boss)
+    }
     try {
-      const item = await travauxService.create({
-        type_travail_id: form.type_travail_id,
-        bloc_id: form.bloc_id,
-        equipe_id: form.equipe_id,
-        date_travail: form.date_travail,
-        quantite: Number(form.quantite),
-        unite: form.unite.trim(),
-        prix_unitaire: Number(form.prix_unitaire),
-        statut: form.statut,
-      });
-      setData((d) => [item, ...d]);
-      setShowAddModal(false);
-      setForm(emptyForm());
-      setFormErrors({});
-      toast.success(`Travail enregistré — ${formatFCFA(item.montant_total)}`);
+      const item = enModification ? await travauxService.update(edition.id, payload) : await travauxService.create(payload);
+      recharger();
+      setEdition(null);
+      const avance = item.avance ? ` · avance ${formatFCFA(item.avance.montant)} (${item.avance.numero})` : '';
+      toast.success(`${enModification ? 'Travail modifié' : 'Travail enregistré'} — ${formatFCFA(item.montant_total)}${avance}`);
     } catch (err) {
+      const champs = err?.fields || {};
+      // L'erreur de l'avance arrive groupée : on la place sous le champ concerné
+      if (typeof champs.avance === 'string') {
+        const cle = /bénéficiaire/i.test(champs.avance) ? 'avance_beneficiaire_id' : 'avance_montant';
+        err.fields = { ...champs, [cle]: champs.avance };
+      }
       showServerErrors(err, { setFormErrors, toast });
     } finally {
       setSaving(false);
     }
   };
 
-  const columns = [
-    { key: 'type_travail_libelle', header: 'Type', sortable: true, render: (row) => <span className="font-medium text-ink-800">{row.type_travail_libelle}</span> },
-    { key: 'bloc_code', header: 'Bloc', render: (row) => <span className="font-mono text-xs">{row.bloc_code}</span> },
-    { key: 'equipe_nom', header: 'Équipe', render: (row) => row.equipe_nom || '—' },
-    { key: 'date_travail', header: 'Date', sortable: true, render: (row) => formatDate(row.date_travail) },
-    { key: 'quantite', header: 'Quantité', sortable: true, render: (row) => <span className="tabular-nums">{formatNumber(row.quantite)} {row.unite}</span> },
-    { key: 'prix_unitaire', header: 'Prix unit.', render: (row) => <span className="tabular-nums">{formatFCFA(row.prix_unitaire)}</span> },
-    { key: 'montant_total', header: 'Montant', sortable: true, render: (row) => <span className="tabular-nums font-medium">{formatFCFA(row.montant_total)}</span> },
-    { key: 'statut', header: 'Statut', render: (row) => <Badge status={row.statut}>{STATUT_TRAVAIL_LABELS[row.statut] || row.statut}</Badge> },
-  ];
+  const columns = colonnesTravaux;
+
+  // « Modifier » visible ; voir, annuler / rétablir et supprimer dans le menu « ⋯ »
+  const ActionsCell = ({ row }) => (
+    <RowActions
+      onView={() => setDetail(row)}
+      onEdit={() => ouvrir(row)}
+      menu={[
+        row.statut === 'ANNULE' && { label: 'Rétablir le travail', icon: RotateCcw, onClick: () => retablir(row) },
+        row.statut !== 'ANNULE' && { label: 'Annuler le travail', icon: Ban, onClick: () => demanderAnnulation(row) },
+      ]}
+      onDelete={isBoss ? () => demanderSuppression(row) : undefined}
+      deleteDisabled={!row.peut_supprimer}
+      deleteTitle="Des paiements (même annulés) sont rattachés : l'historique est conservé, annulez le travail plutôt"
+    />
+  );
+
+  const filtres = (
+    <>
+      <Select
+        value={filtreActivite}
+        onChange={(e) => setFiltreActivite(e.target.value)}
+        options={activites.map((a) => ({ value: a.id, label: a.libelle }))}
+        placeholder="Activité" emptyLabel="Toutes les activités"
+        className="w-full sm:w-40"
+      />
+      <Select
+        value={filtreStatut}
+        onChange={(e) => setFiltreStatut(e.target.value)}
+        options={Object.entries(STATUT_TRAVAIL_LABELS).map(([value, label]) => ({ value, label }))}
+        placeholder="Statut" emptyLabel="Tous les statuts"
+        className="w-full sm:w-40"
+      />
+      <BlocPicker mode="filter" campements={campements} blocs={blocs} value={filtreBloc} onChange={setFiltreBloc} />
+    </>
+  );
 
   if (error) return <ErrorState onRetry={() => window.location.reload()} />;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <PageHeader
         title="Travaux"
-        subtitle="Travaux agricoles réalisés sur les blocs"
+        subtitle="Travaux des blocs et de leurs équipes"
         icon={HardHat}
-        actions={<Button size="sm" onClick={() => { setForm(emptyForm()); setFormErrors({}); setShowAddModal(true); }}><Plus size={16} /> Nouveau travail</Button>}
+        actions={<Button size="sm" onClick={() => ouvrir()}><Plus size={16} /> Nouveau travail</Button>}
       />
-      <div className="flex flex-wrap gap-3">
-        <Select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-          options={types.map((t) => ({ value: t.id, label: t.libelle }))}
-          placeholder="Tous les types"
-          className="w-full sm:w-44"
-        />
-        <Select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          options={Object.entries(STATUT_TRAVAIL_LABELS).map(([value, label]) => ({ value, label }))}
-          placeholder="Tous les statuts"
-          className="w-full sm:w-40"
-        />
-        <BlocPicker mode="filter" campements={campements} blocs={blocs} value={filtreBloc} onChange={setFiltreBloc} />
-      </div>
       <DataTable
         columns={columns}
-        data={filtered}
+        data={lignes}
+        serveur={serveur}
         loading={loading}
         searchPlaceholder="Rechercher un travail..."
-        searchKeys={['type_travail_libelle', 'bloc_code', 'equipe_nom', 'periode']}
+        onRowClick={setDetail}
+        actions={ActionsCell}
+        filters={filtres}
+        filtersActive={compterFiltres(filtreActivite, filtreStatut, filtreBloc.campement_id, filtreBloc.bloc_id)}
+        onResetFilters={() => { setFiltreActivite(''); setFiltreStatut(''); setFiltreBloc({ campement_id: '', bloc_id: '' }); }}
+        emptyTitle="Aucun travail"
+        emptyMessage="Enregistrez un travail : son équipe et sa rémunération sont créées avec lui."
+        emptyAction={<Button size="sm" onClick={() => ouvrir()}><Plus size={14} /> Nouveau travail</Button>}
       />
 
-      <Modal
-        open={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        title="Nouveau travail"
-        size="lg"
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setShowAddModal(false)}>Annuler</Button>
-            <Button onClick={handleSubmit} loading={saving}>Enregistrer</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <Select
-            label="Type de travail"
-            required
-            options={types.filter((t) => t.actif).map((t) => ({ value: t.id, label: t.libelle }))}
-            placeholder="Choisir un type"
-            value={form.type_travail_id}
-            onChange={(e) => choisirType(e.target.value)}
-            error={formErrors.type_travail_id}
-          />
-          <BlocPicker
-            campements={campements}
-            blocs={blocs}
-            value={form}
-            onChange={choisirBloc}
-            required
-            errors={formErrors}
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Select
-              label="Équipe"
-              required
-              options={equipesProposees.map((e) => ({ value: e.id, label: e.bloc_id === form.bloc_id && form.bloc_id ? `${e.nom} (affectée au bloc)` : e.nom }))}
-              placeholder="Choisir une équipe"
-              value={form.equipe_id}
-              onChange={(e) => setForm({ ...form, equipe_id: e.target.value })}
-              error={formErrors.equipe_id}
-            />
-            <Input
-              label="Date du travail"
-              required
-              type="date"
-              value={form.date_travail}
-              onChange={(e) => setForm({ ...form, date_travail: e.target.value })}
-              error={formErrors.date_travail}
-            />
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Input
-              label="Quantité"
-              required
-              type="number"
-              min="0"
-              step="any"
-              placeholder="0"
-              value={form.quantite}
-              onChange={(e) => setForm({ ...form, quantite: e.target.value })}
-              error={formErrors.quantite}
-            />
-            <Input label="Unité" value={form.unite} onChange={(e) => setForm({ ...form, unite: e.target.value })} error={formErrors.unite} />
-            <Input
-              label="Prix unitaire (FCFA)"
-              required
-              type="number"
-              min="0"
-              placeholder="0"
-              value={form.prix_unitaire}
-              onChange={(e) => setForm({ ...form, prix_unitaire: e.target.value })}
-              error={formErrors.prix_unitaire}
-            />
-            <Select
-              label="Statut"
-              options={Object.entries(STATUT_TRAVAIL_LABELS).map(([value, label]) => ({ value, label }))}
-              placeholder=""
-              value={form.statut}
-              onChange={(e) => setForm({ ...form, statut: e.target.value || 'PLANIFIE' })}
-              error={formErrors.statut}
-            />
-          </div>
-          <div className="flex items-center justify-between rounded-lg bg-forest-50 px-4 py-3">
-            <span className="text-sm text-forest-800">
-              Montant du travail
-              <span className="block text-xs text-forest-600">
-                {formatNumber(Number(form.quantite) || 0)} {form.unite} × {formatFCFA(Number(form.prix_unitaire) || 0)}
-              </span>
-            </span>
-            <span className="text-lg font-bold text-forest-800 tabular-nums">{formatFCFA(montant)}</span>
-          </div>
-        </div>
-      </Modal>
+      <TravailDetail travail={detail} onClose={() => setDetail(null)} onChange={remplacer}
+        onAnnuler={(t) => demanderAnnulation(t)} onModifier={(t) => ouvrir(t)}
+        onSupprimer={isBoss ? (t) => demanderSuppression(t) : undefined} />
+
+      <TravailFormulaire
+        edition={edition} enModification={enModification} form={form} formErrors={formErrors} maj={maj} saving={saving}
+        onClose={() => setEdition(null)} onSubmit={handleSubmit}
+        activites={activites} campements={campements} blocs={blocs} unites={unites} optionsPersonnes={optionsPersonnes}
+        choisirActivite={choisirActivite} choisirPersonnes={choisirPersonnes} activiteChoisie={activiteChoisie} blocChoisi={blocChoisi}
+        montant={montant} enEquipe={enEquipe} nomDe={nomDe} titulaire={titulaire} statutPrevu={statutPrevu}
+        avanceExistante={avanceExistante} nomEquipeParDefaut={nomEquipeParDefaut} erreurOptions={erreurOptions}
+        optionsRenseignees={optionsRenseignees} isBoss={isBoss}
+      />
+      {dialogueSuppression}
+      {dialogueAnnulation}
     </div>
   );
 }

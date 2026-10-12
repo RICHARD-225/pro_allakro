@@ -1,13 +1,11 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/contexts/ToastContext';
 import Button from '@/components/ui/Button';
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const toast = useToast();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,7 +41,7 @@ export default function LoginPage() {
   return (
     <div className="animate-fade-in-up">
       <h2 className="text-xl font-bold text-ink-800 mb-1">Connexion</h2>
-      <p className="text-sm text-ink-400 mb-6">Accédez à votre espace de gestion</p>
+      <p className="text-sm text-ink-500 mb-6">Accédez à votre espace de gestion</p>
 
       {error && (
         <div className="mb-4 flex items-center gap-2 p-3 rounded-lg bg-earth-50 border border-earth-200 text-earth-700 text-sm animate-fade-in">
@@ -105,13 +103,9 @@ export default function LoginPage() {
             />
             <span className="text-sm text-ink-600">Se souvenir de moi</span>
           </label>
-          <button
-            type="button"
-            onClick={() => toast.info('La récupération automatique n’est pas encore configurée. Contactez l’administrateur de l’application.')}
-            className="text-xs text-forest-600 hover:text-forest-700 font-medium"
-          >
+          <Link to="/mot-de-passe-oublie" className="text-xs text-forest-600 hover:text-forest-700 font-medium">
             Mot de passe oublié ?
-          </button>
+          </Link>
         </div>
 
         <Button type="submit" className="w-full" size="lg" loading={loading}>
@@ -123,17 +117,17 @@ export default function LoginPage() {
       {/* Demo accounts */}
       {import.meta.env.DEV && (
       <div className="mt-6 pt-5 border-t border-ink-100">
-        <p className="text-xs text-ink-400 text-center mb-3">Comptes de démonstration (développement) :</p>
+        <p className="text-xs text-ink-500 text-center mb-3">Comptes de démonstration (développement) :</p>
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => fillDemo('boss')}
-            className="px-3 py-2 text-xs rounded-lg border border-ink-200 hover:border-forest-300 hover:bg-forest-50/50 transition-colors text-ink-600"
+            className="px-3 py-2 text-xs font-medium rounded-lg border border-ink-200 hover:border-forest-300 hover:bg-forest-50/50 transition-colors text-ink-600"
           >
             Big Boss
           </button>
           <button
             onClick={() => fillDemo('superviseur')}
-            className="px-3 py-2 text-xs rounded-lg border border-ink-200 hover:border-forest-300 hover:bg-forest-50/50 transition-colors text-ink-600"
+            className="px-3 py-2 text-xs font-medium rounded-lg border border-ink-200 hover:border-forest-300 hover:bg-forest-50/50 transition-colors text-ink-600"
           >
             Superviseur
           </button>

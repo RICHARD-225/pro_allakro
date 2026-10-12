@@ -13,10 +13,9 @@ export default function StatCard({
 }) {
   const isUp = evolution > 0;
   const isDown = evolution < 0;
-  const isFlat = evolution === 0 || evolution === undefined;
 
   const TrendIcon = isUp ? TrendingUp : isDown ? TrendingDown : Minus;
-  const trendColor = isUp ? 'text-leaf-600' : isDown ? 'text-earth-600' : 'text-ink-400';
+  const trendColor = isUp ? 'text-earth-600' : isDown ? 'text-leaf-600' : 'text-ink-400';
 
   const iconBg = {
     forest: 'bg-forest-50 text-forest-600',
@@ -27,34 +26,31 @@ export default function StatCard({
   }[accent] || 'bg-forest-50 text-forest-600';
 
   return (
-    <div className={`card animate-fade-in-up ${compact ? 'p-3' : 'p-4'}`}>
+    <div className={`card ${compact ? 'p-3.5' : 'p-4'}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-ink-500 uppercase tracking-wide truncate">{label}</p>
-          <p className={`mt-1.5 font-bold text-ink-800 tabular-nums ${compact ? 'text-lg sm:text-xl' : 'text-2xl'}`}>
+          {/* Le libellé passe à la ligne plutôt que d'être coupé */}
+          <p className="text-xs font-medium leading-snug text-ink-500">{label}</p>
+          <p className={`mt-1 font-semibold tracking-tight text-ink-800 tabular-nums ${compact ? 'text-lg xl:text-xl' : 'text-2xl'}`}>
             {value}
-            {unit && <span className="text-sm font-medium text-ink-400 ml-1">{unit}</span>}
+            {unit && <span className="ml-1 text-sm font-normal text-ink-500">{unit}</span>}
           </p>
           {(evolution !== undefined || period) && (
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
               {evolution !== undefined && (
                 <span className={`flex items-center gap-0.5 text-xs font-medium ${trendColor}`}>
                   <TrendIcon size={12} />
                   {isUp ? '+' : ''}{evolution}%
                 </span>
               )}
-              {evolutionLabel && (
-                <span className="text-xs text-ink-400 truncate">{evolutionLabel}</span>
-              )}
-              {period && !evolutionLabel && (
-                <span className="text-xs text-ink-400">{period}</span>
-              )}
+              {evolutionLabel && <span className="text-xs text-ink-500">{evolutionLabel}</span>}
+              {period && !evolutionLabel && <span className="text-xs text-ink-500">{period}</span>}
             </div>
           )}
         </div>
         {Icon && (
-          <div className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${iconBg}`}>
-            <Icon size={20} />
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${iconBg}`}>
+            <Icon size={18} />
           </div>
         )}
       </div>

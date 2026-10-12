@@ -33,21 +33,23 @@ export default function BlocPicker({ campements = [], blocs = [], value, onChang
         label={isFilter ? undefined : 'Campement'}
         required={required}
         options={campementsProposes.map((c) => ({ value: c.id, label: c.nom }))}
-        placeholder={isFilter ? 'Tous les campements' : 'Choisir un campement'}
+        placeholder={isFilter ? 'Campement' : 'Choisir un campement'}
+        emptyLabel={isFilter ? 'Tous les campements' : undefined}
         value={campementId}
         onChange={(e) => setCampement(e.target.value)}
         error={errors.campement_id}
-        className={isFilter ? 'w-full sm:w-48' : ''}
+        className={isFilter ? 'w-full sm:w-40' : ''}
       />
       <Select
         label={isFilter ? undefined : 'Bloc'}
         required={required}
         options={blocsDuCampement.map((b) => ({ value: b.id, label: `${b.code} — ${b.nom}` }))}
-        placeholder={isFilter ? 'Tous les blocs' : 'Choisir un bloc'}
+        placeholder={isFilter ? 'Bloc' : 'Choisir un bloc'}
+        emptyLabel={isFilter ? 'Tous les blocs' : undefined}
         value={blocId}
         onChange={(e) => setBloc(e.target.value)}
         error={errors.bloc_id}
-        className={isFilter ? 'w-full sm:w-48' : ''}
+        className={isFilter ? 'w-full sm:w-40' : ''}
       />
     </div>
   );

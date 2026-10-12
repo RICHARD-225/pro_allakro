@@ -1,17 +1,23 @@
+import { useId, useRef } from 'react';
+import { useErreurVisible } from '@/hooks/useErreurVisible';
 import { AlertCircle } from 'lucide-react';
 
 export default function Input({
   label,
-  error,
+  error: erreurRecue,
   required = false,
   hint,
   className = '',
   id,
   ...props
 }) {
-  const inputId = id || `input-${props.name || Math.random().toString(36).slice(2, 8)}`;
+  // Identifiant stable (le libellé reste associé au champ d'un rendu à l'autre)
+  const autoId = useId();
+  const inputId = id || `input-${props.name || autoId}`;
+  const racine = useRef(null);
+  const error = useErreurVisible(erreurRecue, props.value, racine);
   return (
-    <div className={className}>
+    <div className={className} ref={racine}>
       {label && (
         <label htmlFor={inputId} className="label-base">
           {label}
@@ -31,7 +37,7 @@ export default function Input({
           {error}
         </p>
       ) : hint ? (
-        <p className="mt-1 text-xs text-ink-400">{hint}</p>
+        <p className="mt-1 text-xs text-ink-500">{hint}</p>
       ) : null}
     </div>
   );

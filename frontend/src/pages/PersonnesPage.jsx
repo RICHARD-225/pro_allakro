@@ -1,87 +1,89 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Users, Plus, Phone, UserCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Users, Plus, Phone } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import AutoCodeInput from '@/components/AutoCodeInput';
-import BlocPicker, { matchBlocFilter, buildBlocFilter } from '@/components/BlocPicker';
-import { DataTable, Badge, Button, ErrorState, Select, Modal, Input } from '@/components/ui';
+import BlocPicker from '@/components/BlocPicker';
+import PersonneDetail from '@/components/PersonneDetail';
+import RowActions from '@/components/RowActions';
+import { DataTable, Badge, Button, ErrorState, Select, Modal, Input, Autocomplete, PlusDOptions } from '@/components/ui';
+import { compterFiltres } from '@/components/ui/Filtres';
 import { useToast } from '@/contexts/ToastContext';
-import { personnesService, fonctionsService, equipesService, campementsService, blocsService } from '@/services';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSuppression } from '@/hooks/useSuppression';
+import { useListeServeur } from '@/hooks/useListeServeur';
+import { personnesService, fonctionsService, campementsService, blocsService } from '@/services';
 import { formatDate } from '@/utils/format';
 import { showServerErrors, today } from '@/utils/errors';
+import { ROLE } from '@/constants';
 
 // La date d'embauche est pré-remplie avec la date du jour
-const emptyForm = () => ({ nom: '', prenom: '', telephone: '', fonction_id: '', equipe_id: '', campement_id: '', date_embauche: today() });
+const emptyForm = () => ({
+  nom: '', prenom: '', telephone: '', fonction: '', campement_id: '', bloc_id: '', date_embauche: today(),
+  adresse: '', actif: true,
+});
 
 export default function PersonnesPage() {
-  const [data, setData] = useState([]);
+  const { user } = useAuth();
+  const isBoss = user?.role === ROLE.BIG_BOSS;
   const [fonctions, setFonctions] = useState([]);
-  const [equipes, setEquipes] = useState([]);
   const [campements, setCampements] = useState([]);
   const [blocs, setBlocs] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [filterStatus, setFilterStatus] = useState('');
   const [filterFonction, setFilterFonction] = useState('');
   const [filtreBloc, setFiltreBloc] = useState({ campement_id: '', bloc_id: '' });
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [edition, setEdition] = useState(null);
+  const [detail, setDetail] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [formErrors, setFormErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const toast = useToast();
+  const enModification = edition && edition !== 'nouveau';
+
+  // Liste paginée par le serveur : page, recherche (nom, matricule, téléphone, fonction, bloc), tri et filtres (statut, fonction, campement / bloc)
+  const { lignes, serveur, chargement: loading, erreur, recharger } = useListeServeur({
+    charger: (p) => personnesService.page(p),
+    filtres: { actif: filterStatus, fonction_id: filterFonction, campement_id: filtreBloc.campement_id, bloc_id: filtreBloc.bloc_id },
+  });
+  useEffect(() => { if (erreur) setError(true); }, [erreur]);
 
   useEffect(() => {
-    Promise.all([
-      personnesService.getAll(),
-      fonctionsService.getAll(),
-      equipesService.getAll(),
-      campementsService.getAll(),
-      blocsService.getAll(),
-    ]).then(([pers, fons, eqs, camps, bl]) => {
-      setData(pers);
-      setFonctions(fons);
-      setEquipes(eqs);
-      setCampements(camps);
-      setBlocs(bl);
-      setLoading(false);
-    }).catch(() => { setError(true); setLoading(false); });
+    Promise.all([fonctionsService.getAll(), campementsService.getAll(), blocsService.getAll()])
+      .then(([fons, camps, bl]) => { setFonctions(fons); setCampements(camps); setBlocs(bl); })
+      .catch(() => setError(true));
   }, []);
 
-  const getEquipe = (id) => equipes.find((e) => e.id === id);
-
-  const filtered = useMemo(() => {
-    const f = buildBlocFilter(filtreBloc, blocs);
-    return data.filter((p) => {
-      if (filterStatus && String(p.actif) !== filterStatus) return false;
-      if (filterFonction && p.fonction_id !== filterFonction) return false;
-      return matchBlocFilter(p, f);
-    });
-  }, [data, filterStatus, filterFonction, filtreBloc, blocs]);
-
-  // Choisir une équipe impose son campement (celui de son bloc)
-  const choisirEquipe = (equipeId) => {
-    const equipe = getEquipe(equipeId);
-    setForm((f) => ({ ...f, equipe_id: equipeId, campement_id: equipe?.campement_id || f.campement_id }));
+  const remplacer = (personne) => {
+    setDetail((courant) => (courant && courant.id === personne.id ? personne : courant));
+    recharger();
   };
 
-  const creerFonction = async (libelle) => {
-    try {
-      const fonction = await fonctionsService.create({ libelle });
-      setFonctions((list) => [...list, fonction].sort((a, b) => a.libelle.localeCompare(b.libelle)));
-      setForm((f) => ({ ...f, fonction_id: fonction.id }));
-      toast.success(`Fonction « ${fonction.libelle} » ajoutée`);
-    } catch (err) {
-      setFormErrors((e) => ({ ...e, fonction_id: err.fields?.libelle || err.message }));
-    }
+  const { demander, dialogue } = useSuppression({
+    supprimer: (row) => personnesService.remove(row.id),
+    apres: () => recharger(),
+    message: (row) => `Supprimer ${row.prenom} ${row.nom} (${row.matricule}) ? Une personne qui a déjà travaillé ou été payée ne peut pas être supprimée : passez-la plutôt en inactive.`,
+    succes: (row) => `${row.prenom} ${row.nom} supprimé(e)`,
+  });
+
+  const ouvrir = (personne = null) => {
+    setForm(personne
+      ? {
+        nom: personne.nom, prenom: personne.prenom, telephone: personne.telephone || '', fonction: personne.fonction_libelle || '',
+        campement_id: personne.campement_id || '', bloc_id: personne.bloc_id || '',
+        date_embauche: personne.date_embauche || today(), adresse: personne.adresse || '', actif: personne.actif,
+      }
+      : emptyForm());
+    setFormErrors({});
+    setEdition(personne || 'nouveau');
   };
 
   const validate = () => {
     const errs = {};
     if (!form.nom.trim()) errs.nom = 'Le nom est obligatoire';
     if (!form.prenom.trim()) errs.prenom = 'Le prénom est obligatoire';
-    if (!form.fonction_id) errs.fonction_id = 'La fonction est obligatoire';
-    if (!form.campement_id && !form.equipe_id) errs.campement_id = 'Le campement est obligatoire';
-    if (form.telephone && !/^\+?[0-9][0-9\s()-]{7,19}$/.test(form.telephone.trim()))
-      errs.telephone = 'Numéro de téléphone invalide';
+    if (!form.fonction.trim()) errs.fonction_id = 'La fonction est obligatoire';
+    if (!form.bloc_id) errs.bloc_id = "Le bloc d'affectation est obligatoire";
+    if (form.telephone && !/^\+?[0-9][0-9\s().-]{7,19}$/.test(form.telephone.trim())) errs.telephone = 'Numéro de téléphone invalide';
     if (!form.date_embauche) errs.date_embauche = "La date d'embauche est obligatoire";
     else if (form.date_embauche > today()) errs.date_embauche = 'La date ne peut pas être dans le futur';
     setFormErrors(errs);
@@ -91,170 +93,171 @@ export default function PersonnesPage() {
   const handleSubmit = async () => {
     if (!validate()) return;
     setSaving(true);
+    // Fonction choisie ou saisie librement : le serveur réutilise l'existante (majuscules et espaces ignorés)
+    const payload = {
+      nom: form.nom.trim(), prenom: form.prenom.trim(), telephone: form.telephone.trim(), adresse: form.adresse.trim(),
+      fonction_libelle: form.fonction.trim(), bloc_id: form.bloc_id, date_embauche: form.date_embauche,
+      ...(enModification ? { actif: form.actif } : {}),
+    };
     try {
-      const item = await personnesService.create({
-        nom: form.nom.trim(),
-        prenom: form.prenom.trim(),
-        telephone: form.telephone.trim(),
-        fonction_id: form.fonction_id,
-        equipe_id: form.equipe_id || null,
-        campement_id: form.campement_id || null,
-        date_embauche: form.date_embauche,
-      });
-      setData((d) => [item, ...d]);
-      setShowAddModal(false);
-      setForm(emptyForm());
-      setFormErrors({});
-      toast.success(`${item.prenom} ${item.nom} enregistré(e) — matricule ${item.matricule}`);
+      const item = enModification ? await personnesService.update(edition.id, payload) : await personnesService.create(payload);
+      if (enModification) remplacer(item); else recharger();
+      if (!fonctions.some((f) => f.id === item.fonction_id)) {
+        setFonctions((liste) => [...liste, { id: item.fonction_id, libelle: item.fonction_libelle }]);
+      }
+      setEdition(null);
+      toast.success(enModification
+        ? `${item.prenom} ${item.nom} modifié(e)`
+        : `${item.prenom} ${item.nom} enregistré(e) — matricule ${item.matricule}`);
     } catch (err) {
-      showServerErrors(err, { setFormErrors, toast });
+      const erreurs = err.fields || {};
+      showServerErrors(err, { setFormErrors: () => setFormErrors({ ...erreurs, fonction_id: erreurs.fonction_id || erreurs.fonction_libelle }), toast });
     } finally {
       setSaving(false);
     }
   };
 
   const columns = [
-    { key: 'matricule', header: 'Matricule', sortable: true, render: (row) => <span className="font-mono text-xs font-medium text-forest-700">{row.matricule}</span> },
-    { key: 'nom', header: 'Nom', sortable: true, render: (row) => (
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-full bg-forest-50 flex items-center justify-center shrink-0">
-          <UserCircle size={16} className="text-forest-600" />
+    { key: 'nom', header: 'Personne', sortable: true, render: (row) => (
+      <div className="flex items-center gap-2.5">
+        <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-forest-50 text-xs font-semibold text-forest-700 md:flex">
+          {row.prenom?.[0]}{row.nom?.[0]}
         </div>
-        <span className="font-medium text-ink-800">{row.prenom} {row.nom}</span>
+        <span className="min-w-0">
+          <span className="font-medium text-ink-800">{row.prenom} {row.nom}</span>
+          <span className="block text-2xs tabular-nums text-forest-700">{row.matricule}</span>
+        </span>
       </div>
     ) },
-    { key: 'telephone', header: 'Téléphone', render: (row) => (row.telephone
-      ? <span className="flex items-center gap-1 text-ink-600"><Phone size={12} />{row.telephone}</span>
-      : '—') },
-    { key: 'fonction_libelle', header: 'Fonction', render: (row) => row.fonction_libelle || '—' },
-    { key: 'equipe_nom', header: 'Équipe', render: (row) => row.equipe_nom || <span className="text-ink-400">Sans équipe</span> },
-    { key: 'bloc_code', header: 'Bloc', render: (row) => <span className="font-mono text-xs">{row.bloc_code || '—'}</span> },
-    { key: 'campement_nom', header: 'Campement', render: (row) => row.campement_nom || '—' },
-    { key: 'actif', header: 'Statut', render: (row) => <Badge status={row.actif ? 'active' : 'inactive'}>{row.actif ? 'Actif' : 'Inactif'}</Badge> },
-    { key: 'date_embauche', header: 'Embauche', sortable: true, render: (row) => formatDate(row.date_embauche) },
+    { key: 'fonction_libelle', header: 'Fonction', sortable: true, render: (row) => row.fonction_libelle || '—' },
+    { key: 'bloc_code', header: 'Bloc', sortable: true, render: (row) => (row.bloc_code ? (
+      <span>
+        <span className="tabular-nums">{row.bloc_code}</span>
+        <span className="block text-xs text-ink-500">{row.campement_nom}</span>
+      </span>
+    ) : <Badge status="unpaid">À affecter</Badge>) },
+    { key: 'telephone', header: 'Téléphone', mobile: false, render: (row) => (row.telephone
+      ? <span className="flex items-center gap-1.5 tabular-nums text-ink-600"><Phone size={13} />{row.telephone}</span> : '—') },
+    { key: 'actif', header: 'Statut', mobile: false, render: (row) => <Badge status={row.actif ? 'active' : 'inactive'}>{row.actif ? 'Active' : 'Inactive'}</Badge> },
+    { key: 'date_embauche', header: 'Embauche', sortable: true, mobile: false, render: (row) => <span className="tabular-nums">{formatDate(row.date_embauche)}</span> },
   ];
+
+  const ActionsCell = ({ row }) => (
+    <RowActions onView={() => setDetail(row)} onEdit={() => ouvrir(row)} onDelete={isBoss ? () => demander(row) : undefined} />
+  );
 
   if (error) return <ErrorState onRetry={() => window.location.reload()} />;
 
-  const equipeChoisie = getEquipe(form.equipe_id);
-
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <PageHeader
         title="Personnes"
-        subtitle="Gestion du personnel"
+        subtitle="Personnel affecté aux blocs"
         icon={Users}
-        actions={<Button size="sm" onClick={() => { setForm(emptyForm()); setFormErrors({}); setShowAddModal(true); }}><Plus size={16} /> Nouvelle personne</Button>}
+        actions={<Button size="sm" onClick={() => ouvrir()}><Plus size={16} /> Nouvelle personne</Button>}
       />
-      <div className="flex flex-wrap gap-3">
-        <Select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          options={[{ value: 'true', label: 'Actif' }, { value: 'false', label: 'Inactif' }]}
-          placeholder="Tous les statuts"
-          className="w-full sm:w-40"
-        />
-        <Select
-          value={filterFonction}
-          onChange={(e) => setFilterFonction(e.target.value)}
-          options={fonctions.map((f) => ({ value: f.id, label: f.libelle }))}
-          placeholder="Toutes les fonctions"
-          className="w-full sm:w-48"
-        />
-        <BlocPicker mode="filter" campements={campements} blocs={blocs} value={filtreBloc} onChange={setFiltreBloc} />
-      </div>
       <DataTable
         columns={columns}
-        data={filtered}
+        data={lignes}
+        serveur={serveur}
         loading={loading}
-        searchPlaceholder="Rechercher par nom, matricule, téléphone..."
-        searchKeys={['matricule', 'nom', 'prenom', 'telephone']}
+        searchPlaceholder="Rechercher une personne..."
+        onRowClick={(row) => setDetail(row)}
+        actions={ActionsCell}
+        filters={(
+          <>
+            <Select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              options={[{ value: 'true', label: 'Actives' }, { value: 'false', label: 'Inactives' }]}
+              placeholder="Statut" emptyLabel="Tous les statuts"
+              className="w-full sm:w-40"
+            />
+            <Select
+              value={filterFonction}
+              onChange={(e) => setFilterFonction(e.target.value)}
+              options={fonctions.map((f) => ({ value: f.id, label: f.libelle }))}
+              placeholder="Fonction" emptyLabel="Toutes les fonctions"
+              className="w-full sm:w-40"
+            />
+            <BlocPicker mode="filter" campements={campements} blocs={blocs} value={filtreBloc} onChange={setFiltreBloc} />
+          </>
+        )}
+        filtersActive={compterFiltres(filterStatus, filterFonction, filtreBloc.campement_id, filtreBloc.bloc_id)}
+        onResetFilters={() => { setFilterStatus(''); setFilterFonction(''); setFiltreBloc({ campement_id: '', bloc_id: '' }); }}
+        emptyTitle="Aucune personne"
+        emptyAction={<Button size="sm" onClick={() => ouvrir()}><Plus size={14} /> Nouvelle personne</Button>}
+      />
+      {dialogue}
+      {/* « Modifier » dans la fiche : on ferme la fiche puis on ouvre le formulaire de la personne */}
+      <PersonneDetail
+        personne={detail}
+        onClose={() => setDetail(null)}
+        onChange={remplacer}
+        onModifier={(personne) => { setDetail(null); ouvrir(personne); }}
       />
 
       <Modal
-        open={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        title="Nouvelle personne"
+        open={!!edition}
+        onClose={() => setEdition(null)}
+        title={enModification ? `Modifier ${edition.prenom} ${edition.nom}` : 'Nouvelle personne'}
+        size="lg"
         footer={
           <>
-            <Button variant="outline" onClick={() => setShowAddModal(false)}>Annuler</Button>
+            <Button variant="outline" onClick={() => setEdition(null)}>Annuler</Button>
             <Button onClick={handleSubmit} loading={saving}>Enregistrer</Button>
           </>
         }
       >
         <div className="space-y-4">
-          <AutoCodeInput service={personnesService} label="Matricule" />
+          {enModification
+            ? <Input label="Matricule" value={edition.matricule} disabled readOnly />
+            : <AutoCodeInput service={personnesService} label="Matricule" />}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="Prénom"
-              required
-              placeholder="Ex: Jean"
-              value={form.prenom}
-              onChange={(e) => setForm({ ...form, prenom: e.target.value })}
-              error={formErrors.prenom}
-            />
-            <Input
-              label="Nom"
-              required
-              placeholder="Ex: Kouassi"
-              value={form.nom}
-              onChange={(e) => setForm({ ...form, nom: e.target.value })}
-              error={formErrors.nom}
-            />
+            <Input label="Prénom" required placeholder="Ex: Jean" value={form.prenom}
+              onChange={(e) => setForm({ ...form, prenom: e.target.value })} error={formErrors.prenom} />
+            <Input label="Nom" required placeholder="Ex: Kouassi" value={form.nom}
+              onChange={(e) => setForm({ ...form, nom: e.target.value })} error={formErrors.nom} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="Téléphone"
-              placeholder="Ex: 07 01 23 45 67"
-              value={form.telephone}
-              onChange={(e) => setForm({ ...form, telephone: e.target.value })}
-              error={formErrors.telephone}
-            />
-            <Select
+            <Input label="Téléphone" placeholder="Ex: 07 01 23 45 67" value={form.telephone}
+              onChange={(e) => setForm({ ...form, telephone: e.target.value })} error={formErrors.telephone} />
+            <Autocomplete
               label="Fonction"
               required
-              creatable
-              onCreate={creerFonction}
-              options={fonctions.map((f) => ({ value: f.id, label: f.libelle }))}
-              placeholder="Choisir ou saisir une fonction"
-              value={form.fonction_id}
-              onChange={(e) => setForm({ ...form, fonction_id: e.target.value })}
+              placeholder="Saisir ou choisir une fonction"
+              value={form.fonction}
+              onChange={(valeur) => setForm((f) => ({ ...f, fonction: valeur }))}
+              suggestions={fonctions.map((f) => f.libelle)}
+              libelleNouveau="Nouvelle fonction"
               error={formErrors.fonction_id}
+              hint="Les fonctions existantes sont proposées pendant la saisie"
             />
           </div>
-          <Select
-            label="Affecter à une équipe (facultatif)"
-            options={equipes.filter((e) => e.actif).map((e) => ({
-              value: e.id,
-              label: `${e.nom} — ${e.campement_nom || 'sans bloc'}${e.bloc_code ? ` / ${e.bloc_code}` : ''}`,
-            }))}
-            placeholder="Aucune équipe"
-            value={form.equipe_id}
-            onChange={(e) => choisirEquipe(e.target.value)}
-            error={formErrors.equipe_id}
+          <BlocPicker
+            campements={campements}
+            blocs={blocs}
+            value={{ campement_id: form.campement_id, bloc_id: form.bloc_id }}
+            onChange={(v) => setForm((f) => ({ ...f, ...v }))}
+            required
+            errors={formErrors}
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Select
-              label="Campement"
-              required
-              options={campements.filter((c) => c.actif).map((c) => ({ value: c.id, label: c.nom }))}
-              placeholder="Choisir un campement"
-              value={form.campement_id}
-              onChange={(e) => setForm({ ...form, campement_id: e.target.value })}
-              disabled={!!equipeChoisie?.campement_id}
-              error={formErrors.campement_id}
-              hint={equipeChoisie?.campement_id ? "Campement de l'équipe choisie" : undefined}
-            />
-            <Input
-              label="Date d'embauche"
-              required
-              type="date"
-              max={today()}
-              value={form.date_embauche}
-              onChange={(e) => setForm({ ...form, date_embauche: e.target.value })}
-              error={formErrors.date_embauche}
-            />
+            <Input label="Date d'embauche" required type="date" max={today()} value={form.date_embauche}
+              onChange={(e) => setForm({ ...form, date_embauche: e.target.value })} error={formErrors.date_embauche} />
           </div>
+          {enModification && (
+            <label className="flex items-center gap-2 text-sm text-ink-700">
+              <input type="checkbox" checked={form.actif} onChange={(e) => setForm({ ...form, actif: e.target.checked })}
+                className="h-4 w-4 rounded border-ink-300 text-forest-600" />
+              Personne active
+            </label>
+          )}
+          {/* Champ facultatif replié ; ouvert d'emblée quand l'adresse est déjà renseignée (modification) */}
+          <PlusDOptions resume="Adresse" ouvertParDefaut={!!form.adresse}>
+            <Input label="Adresse" placeholder="Village, quartier..." value={form.adresse}
+              onChange={(e) => setForm({ ...form, adresse: e.target.value })} error={formErrors.adresse} />
+          </PlusDOptions>
         </div>
       </Modal>
     </div>

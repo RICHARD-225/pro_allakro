@@ -55,9 +55,9 @@ export default function DonutChart({
           </PieChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="text-2xs uppercase tracking-wide text-ink-400">{centerLabel}</span>
+          <span className="text-xs text-ink-500">{centerLabel}</span>
           <span className="text-base font-semibold tabular-nums text-ink-800">{compact(total)}</span>
-          {unit && <span className="text-2xs text-ink-400">{unit}</span>}
+          {unit && <span className="text-2xs text-ink-500">{unit}</span>}
         </div>
       </div>
 

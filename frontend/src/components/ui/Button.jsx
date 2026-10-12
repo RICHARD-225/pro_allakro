@@ -9,9 +9,10 @@ const VARIANTS = {
   success: 'bg-leaf-600 text-white hover:bg-leaf-700',
 };
 
+// Tailles : sm 13 px (barres d'outils, lignes), md 14 px (formulaires, en-têtes), lg pour les écrans de connexion
 const SIZES = {
-  sm: 'px-2.5 py-1.5 text-xs',
-  md: 'px-3.5 py-2 text-sm',
+  sm: 'px-3 py-1.5 text-[13px]',
+  md: 'px-4 py-2 text-sm',
   lg: 'px-5 py-2.5 text-sm',
   icon: 'p-2',
 };
@@ -33,7 +34,7 @@ export default function Button({
       className={`btn ${VARIANTS[variant] || VARIANTS.primary} ${SIZES[size] || SIZES.md} ${className}`}
       {...props}
     >
-      {loading && <Loader2 size={16} className="animate-spin" />}
+      {loading && <Loader2 size={size === 'sm' ? 14 : 16} className="animate-spin" />}
       {children}
     </button>
   );

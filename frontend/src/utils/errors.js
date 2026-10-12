@@ -5,5 +5,9 @@ export function showServerErrors(error, { setFormErrors, toast } = {}) {
   toast?.error(hasFieldErrors && error.status === 400 ? 'Vérifiez les champs signalés.' : error?.message || 'Une erreur est survenue.');
 }
 
-export const today = () => new Date().toISOString().split('T')[0];
+// Date du jour locale (AAAA-MM-JJ), et non celle du fuseau UTC
+export const today = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 export const currentPeriode = () => today().substring(0, 7);

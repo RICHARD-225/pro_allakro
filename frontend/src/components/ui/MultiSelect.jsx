@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { useErreurVisible } from '@/hooks/useErreurVisible';
 import { Search, X } from 'lucide-react';
 
 const normalize = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -7,8 +8,10 @@ const normalize = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, ''
  * Sélection multiple avec recherche (cases à cocher).
  * options: [{ value, label, hint? }] — value: tableau des valeurs cochées — onChange(tableau)
  */
-export default function MultiSelect({ label, options = [], value = [], onChange, placeholder = 'Rechercher...', error, hint }) {
+export default function MultiSelect({ label, options = [], value = [], onChange, placeholder = 'Rechercher...', error: erreurRecue, hint }) {
   const [query, setQuery] = useState('');
+  const racine = useRef(null);
+  const error = useErreurVisible(erreurRecue, value, racine);
   const selected = new Set(value);
 
   const filtered = useMemo(() => {
@@ -19,7 +22,7 @@ export default function MultiSelect({ label, options = [], value = [], onChange,
   const toggle = (v) => onChange(selected.has(v) ? value.filter((x) => x !== v) : [...value, v]);
 
   return (
-    <div>
+    <div ref={racine}>
       {label && <p className="label-base">{label}</p>}
 
       {value.length > 0 && (
@@ -46,7 +49,7 @@ export default function MultiSelect({ label, options = [], value = [], onChange,
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={placeholder}
-            className="w-full rounded-t-lg bg-transparent py-2 pl-8 pr-3 text-sm text-ink-800 placeholder:text-ink-400 focus:outline-none"
+            className="w-full rounded-t-lg bg-transparent py-2 pl-8 pr-3 text-base text-ink-800 placeholder:text-ink-400 focus:outline-none sm:text-sm"
           />
         </div>
         <ul className="max-h-52 overflow-y-auto py-1">

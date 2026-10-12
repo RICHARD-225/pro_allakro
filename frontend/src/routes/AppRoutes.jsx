@@ -10,20 +10,19 @@ import AuthLayout from '@/components/layouts/AuthLayout';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
+const MotDePasseOubliePage = lazy(() => import('@/pages/MotDePasseOubliePage'));
+const ReinitialiserMotDePassePage = lazy(() => import('@/pages/ReinitialiserMotDePassePage'));
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const PlantationsPage = lazy(() => import('@/pages/PlantationsPage'));
 const CampementsPage = lazy(() => import('@/pages/CampementsPage'));
 const BlocsPage = lazy(() => import('@/pages/BlocsPage'));
 const BlocDetailPage = lazy(() => import('@/pages/BlocDetailPage'));
 const PersonnesPage = lazy(() => import('@/pages/PersonnesPage'));
-const EquipesPage = lazy(() => import('@/pages/EquipesPage'));
 const TravauxPage = lazy(() => import('@/pages/TravauxPage'));
 const DepensesPage = lazy(() => import('@/pages/DepensesPage'));
-const RemunerationsPage = lazy(() => import('@/pages/RemunerationsPage'));
-const PaiementsPage = lazy(() => import('@/pages/PaiementsPage'));
+const SalairesPage = lazy(() => import('@/pages/SalairesPage'));
 const StockPage = lazy(() => import('@/pages/StockPage'));
 const ParticuliersPage = lazy(() => import('@/pages/ParticuliersPage'));
-const PrevisionsPage = lazy(() => import('@/pages/PrevisionsPage'));
 const BilanPage = lazy(() => import('@/pages/BilanPage'));
 const RapportsPage = lazy(() => import('@/pages/RapportsPage'));
 const UtilisateursPage = lazy(() => import('@/pages/UtilisateursPage'));
@@ -57,6 +56,8 @@ export default function AppRoutes() {
             {/* Auth */}
             <Route element={<AuthLayout />}>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/mot-de-passe-oublie" element={<Suspense fallback={<PageFallback />}><MotDePasseOubliePage /></Suspense>} />
+              <Route path="/reinitialiser-mot-de-passe" element={<Suspense fallback={<PageFallback />}><ReinitialiserMotDePassePage /></Suspense>} />
             </Route>
 
             {/* App */}
@@ -73,14 +74,16 @@ export default function AppRoutes() {
               <Route path="/blocs" element={<Suspense fallback={<PageFallback />}><BlocsPage /></Suspense>} />
               <Route path="/blocs/:id" element={<Suspense fallback={<PageFallback />}><BlocDetailPage /></Suspense>} />
               <Route path="/personnes" element={<Suspense fallback={<PageFallback />}><PersonnesPage /></Suspense>} />
-              <Route path="/equipes" element={<Suspense fallback={<PageFallback />}><EquipesPage /></Suspense>} />
+              {/* Les équipes se créent avec les travaux */}
+              <Route path="/equipes" element={<Navigate to="/travaux" replace />} />
               <Route path="/travaux" element={<Suspense fallback={<PageFallback />}><TravauxPage /></Suspense>} />
               <Route path="/depenses" element={<Suspense fallback={<PageFallback />}><DepensesPage /></Suspense>} />
-              <Route path="/remunerations" element={<Suspense fallback={<PageFallback />}><RemunerationsPage /></Suspense>} />
-              <Route path="/paiements" element={<Suspense fallback={<PageFallback />}><PaiementsPage /></Suspense>} />
+              <Route path="/salaires" element={<Suspense fallback={<PageFallback />}><SalairesPage /></Suspense>} />
+              {/* Anciennes sections, regroupées dans Salaires */}
+              <Route path="/remunerations" element={<Navigate to="/salaires" replace />} />
+              <Route path="/paiements" element={<Navigate to="/salaires?onglet=paiements" replace />} />
               <Route path="/stock" element={<Suspense fallback={<PageFallback />}><StockPage /></Suspense>} />
               <Route path="/particuliers" element={<Suspense fallback={<PageFallback />}><ParticuliersPage /></Suspense>} />
-              <Route path="/previsions" element={<Suspense fallback={<PageFallback />}><PrevisionsPage /></Suspense>} />
               <Route path="/bilan" element={<Suspense fallback={<PageFallback />}><BilanPage /></Suspense>} />
               <Route path="/rapports" element={<Suspense fallback={<PageFallback />}><RapportsPage /></Suspense>} />
               <Route path="/utilisateurs" element={<Suspense fallback={<PageFallback />}><UtilisateursPage /></Suspense>} />

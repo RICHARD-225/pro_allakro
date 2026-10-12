@@ -1,12 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Wallet, HardHat, Package, Menu } from 'lucide-react';
+import { LayoutDashboard, Wallet, HardHat, CreditCard, Menu } from 'lucide-react';
 
-// Mobile bottom navigation — quick access to key sections
+// Navigation mobile : accès rapide aux sections les plus utilisées
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Accueil', icon: LayoutDashboard },
-  { to: '/depenses', label: 'Dépenses', icon: Wallet },
   { to: '/travaux', label: 'Travaux', icon: HardHat },
-  { to: '/stock', label: 'Stock', icon: Package },
+  { to: '/salaires', label: 'Salaires', icon: Wallet },
+  { to: '/depenses', label: 'Dépenses', icon: CreditCard },
 ];
 
 export default function BottomNav({ onOpenMenu }) {
@@ -20,7 +20,7 @@ export default function BottomNav({ onOpenMenu }) {
             to={item.to}
             className={({ isActive }) =>
               `flex flex-col items-center justify-center gap-0.5 py-2 px-3 rounded-lg transition-colors no-tap-highlight ${
-                isActive ? 'text-forest-700' : 'text-ink-400'
+                isActive ? 'text-forest-700' : 'text-ink-500'
               }`
             }
             aria-label={item.label}
@@ -37,7 +37,7 @@ export default function BottomNav({ onOpenMenu }) {
       {/* More menu button */}
       <button
         onClick={onOpenMenu}
-        className="flex flex-col items-center justify-center gap-0.5 py-2 px-3 rounded-lg text-ink-400 hover:text-ink-600 transition-colors no-tap-highlight"
+        className="flex flex-col items-center justify-center gap-0.5 py-2 px-3 rounded-lg text-ink-500 hover:text-ink-700 transition-colors no-tap-highlight"
         aria-label="Plus de menus"
       >
         <Menu size={20} />

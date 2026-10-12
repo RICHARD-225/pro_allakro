@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useErreurVisible } from '@/hooks/useErreurVisible';
 import { ChevronDown, Check, Plus, X } from 'lucide-react';
 
 const normalize = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -7,10 +8,12 @@ const normalize = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, ''
  * Liste déroulante avec recherche : on tape pour filtrer les options.
  * API compatible avec un <select> : onChange reçoit { target: { value, name } }.
  * - creatable + onCreate(texte) : propose « Ajouter "texte" » quand aucune option ne correspond.
+ * - emptyLabel : libellé du choix « vide » dans la liste (ex. « Tous les statuts »), quand le champ fermé
+ *   affiche un libellé court (placeholder « Statut »).
  */
 export default function Select({
   label,
-  error,
+  error: erreurRecue,
   required = false,
   options = [],
   placeholder = 'Sélectionner...',
@@ -23,6 +26,7 @@ export default function Select({
   creatable = false,
   onCreate,
   hint,
+  emptyLabel,
 }) {
   const autoId = useId();
   const selectId = id || `select-${name || autoId}`;
@@ -30,6 +34,7 @@ export default function Select({
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
   const rootRef = useRef(null);
+  const error = useErreurVisible(erreurRecue, value, rootRef);
   const inputRef = useRef(null);
   const listRef = useRef(null);
 
@@ -49,7 +54,7 @@ export default function Select({
 
   // Entrées affichées : option « vide » (placeholder) + options filtrées + création éventuelle
   const entries = [
-    ...(placeholder && !query ? [{ value: '', label: placeholder, empty: true }] : []),
+    ...(placeholder && !query ? [{ value: '', label: emptyLabel || placeholder, empty: true }] : []),
     ...filtered,
     ...(canCreate ? [{ value: '__create__', label: query.trim(), create: true }] : []),
   ];
@@ -81,7 +86,12 @@ export default function Select({
     if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setActive((a) => Math.min(a + 1, entries.length - 1)); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setActive((a) => Math.max(a - 1, 0)); }
     else if (e.key === 'Enter') { if (open && entries[active]) { e.preventDefault(); choose(entries[active]); } }
-    else if (e.key === 'Escape') { setOpen(false); setQuery(''); }
+    else if (e.key === 'Escape') {
+      // Ferme la liste sans fermer la fenêtre qui la contient
+      if (open) e.stopPropagation();
+      setOpen(false);
+      setQuery('');
+    }
     else if (e.key === 'Tab') { setOpen(false); setQuery(''); }
   };
 
@@ -104,7 +114,7 @@ export default function Select({
           aria-invalid={!!error}
           autoComplete="off"
           disabled={disabled}
-          className={`input-base pr-14 ${selected ? '' : 'placeholder:text-ink-400'} ${error ? 'border-earth-400' : ''} ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+          className={`input-base ${selected && placeholder && !disabled ? 'pr-14' : 'pr-9'} ${selected ? '' : 'placeholder:text-ink-400'} ${error ? 'border-earth-400' : ''} ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
           placeholder={selected ? selected.label : placeholder}
           value={open ? query : (selected?.label ?? '')}
           onChange={(e) => { setQuery(e.target.value); setOpen(true); }}

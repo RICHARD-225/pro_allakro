@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   FileBarChart, FileSpreadsheet, Download, CalendarDays, MapPin, Layers, LayoutDashboard, Scale, Receipt,
-  ShoppingBag, TrendingUp, Wallet, HandCoins, HardHat, Trees, Package, ArrowLeftRight, History,
+  ShoppingBag, Wallet, HandCoins, HardHat, Trees, Package, ArrowLeftRight, History,
 } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import BlocPicker from '@/components/BlocPicker';
@@ -17,13 +17,12 @@ import { ROLE } from '@/constants';
 const FEUILLES = [
   { nom: 'Synthèse', description: 'Indicateurs clés, graphiques et sommaire cliquable', icon: LayoutDashboard },
   { nom: 'Bilan financier', description: 'Dépenses par catégorie et par campement, règlements, total des charges', icon: Scale },
-  { nom: 'Dépenses', description: 'Toutes les dépenses avec catégorie, bloc et statut', icon: Receipt },
+  { nom: 'Dépenses', description: 'Toutes les dépenses (achats et salaires payés compris) avec catégorie, bloc et statut', icon: Receipt },
   { nom: 'Achats particuliers', description: 'Achats aux particuliers et règlement des vendeurs', icon: ShoppingBag },
-  { nom: 'Prévisions', description: 'Budget prévu, réalisé et écart', icon: TrendingUp },
-  { nom: 'Rémunérations', description: 'Brut, ponction, net, payé et reste par personne', icon: Wallet },
-  { nom: 'Paiements', description: 'Paiements individuels et par équipe', icon: HandCoins },
-  { nom: 'Travaux', description: 'Travaux par bloc et par équipe', icon: HardHat },
-  { nom: 'Exploitation', description: 'Chaque bloc avec ses équipes, travaux et dépenses', icon: Trees },
+  { nom: 'Rémunérations', description: 'Salaires des travaux et saisies manuelles : net dû, payé, reste et statut', icon: Wallet },
+  { nom: 'Paiements', description: "Paiements et avances (n° de reçu), directs ou via le chef d'équipe", icon: HandCoins },
+  { nom: 'Travaux', description: 'Activité, équipe ou responsable, dates, quantité, prix et statut', icon: HardHat },
+  { nom: 'Exploitation', description: 'Chaque bloc : superficie, plantes, personnes affectées, travaux et dépenses', icon: Trees },
   { nom: 'Stock', description: 'État du stock du jour, valeur et alertes', icon: Package },
   { nom: 'Mouvements de stock', description: 'Entrées, sorties et ajustements', icon: ArrowLeftRight },
   { nom: 'Journal', description: 'Historique des actions des utilisateurs', icon: History, bigBoss: true },
@@ -71,7 +70,7 @@ export default function RapportsPage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <PageHeader
         title="Rapports"
         subtitle="Un seul classeur Excel regroupant tous les rapports, une feuille par thème"
@@ -124,7 +123,7 @@ export default function RapportsPage() {
             </div>
 
             <div className="flex flex-col gap-2 border-t border-ink-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-              <span className="truncate font-mono text-xs text-ink-400" title={nomFichier}>{nomFichier}</span>
+              <span className="truncate font-mono text-xs text-ink-500" title={nomFichier}>{nomFichier}</span>
               <Button size="lg" onClick={telecharger} loading={enCours} className="w-full sm:w-auto">
                 {!enCours && <Download size={16} />}
                 {enCours ? 'Préparation du rapport…' : 'Télécharger le rapport Excel'}
@@ -146,15 +145,15 @@ export default function RapportsPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-ink-800">
-                    <span className="mr-1.5 text-xs tabular-nums text-ink-400">{i + 1}.</span>{feuille.nom}
+                    <span className="mr-1.5 text-xs tabular-nums text-ink-500">{i + 1}.</span>{feuille.nom}
                   </p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-ink-400">{feuille.description}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-ink-500">{feuille.description}</p>
                 </div>
               </Card>
             );
           })}
         </div>
-        <p className="text-xs text-ink-400">
+        <p className="text-xs text-ink-500">
           Le stock est présenté à la date du jour, pour toute l'exploitation. Les autres feuilles suivent la période et le
           périmètre choisis.
         </p>

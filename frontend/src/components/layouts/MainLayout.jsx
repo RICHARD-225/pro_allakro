@@ -21,7 +21,7 @@ export default function MainLayout() {
       <div className="flex-1 flex flex-col min-w-0">
         <Header onOpenMobileMenu={() => setMobileOpen(true)} />
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-[1600px] mx-auto px-4 lg:px-6 py-6 pb-24 lg:pb-6">
+          <div className="max-w-[1600px] mx-auto px-4 lg:px-6 pt-4 sm:pt-6 pb-24 lg:pb-6">
             <ErrorBoundary resetKey={location.pathname}>
               <Outlet />
             </ErrorBoundary>

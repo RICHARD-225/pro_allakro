@@ -75,8 +75,8 @@ export default {
           100: '#e7e9e7',
           200: '#d0d4d0',
           300: '#acb3ac',
-          400: '#888f88',
-          500: '#697069',
+          400: '#717871',
+          500: '#636a63',
           600: '#525852',
           700: '#434743',
           800: '#383b38',
@@ -97,13 +97,19 @@ export default {
           950: '#322a1c',
         },
       },
+      // Inter partout ; la pile système prend le relais si la police n'est pas encore chargée
+      fontFamily: {
+        sans: ['"Inter Variable"', 'Inter', 'ui-sans-serif', 'system-ui', '-apple-system', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
+      },
+      // Échelle : 2xs 11 px (mentions), xs 12 px (secondaire), sm 14 px (texte), base 16 px, lg 18, xl 20, 2xl 24
       fontSize: {
-        '2xs': '0.625rem',
+        '2xs': ['0.6875rem', { lineHeight: '1rem' }],
       },
       boxShadow: {
         card: '0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03)',
         'card-hover': '0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04)',
         'soft-lg': '0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03)',
+        'soft-md': '0 -2px 10px rgba(0, 0, 0, 0.05), 0 2px 6px rgba(0, 0, 0, 0.04)',
       },
       keyframes: {
         shimmer: {
@@ -118,11 +124,26 @@ export default {
           '0%': { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(0)' },
         },
+        slideInRight: {
+          '0%': { opacity: '0', transform: 'translateX(16px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        scaleIn: {
+          '0%': { opacity: '0', transform: 'scale(0.97)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        sheetUp: {
+          '0%': { transform: 'translateY(100%)' },
+          '100%': { transform: 'translateY(0)' },
+        },
       },
       animation: {
         shimmer: 'shimmer 2s infinite linear',
         'fade-in': 'fadeIn 0.2s ease-out',
         'slide-in-left': 'slideInLeft 0.25s ease-out',
+        'slide-in-right': 'slideInRight 0.2s ease-out',
+        'scale-in': 'scaleIn 0.15s ease-out',
+        'sheet-up': 'sheetUp 0.22s ease-out',
       },
     },
   },

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'allakro-v3';
+const CACHE_NAME = 'allakro-v5';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -29,6 +29,22 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   // Les données de l'API ne sont jamais mises en cache (elles doivent toujours venir du serveur)
   if (new URL(request.url).pathname.startsWith('/api/')) return;
+
+  // Pages : réseau d'abord (toujours la dernière version de l'application), copie locale hors ligne
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(request).then((cached) => {

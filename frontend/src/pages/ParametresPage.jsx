@@ -46,7 +46,7 @@ export default function ParametresPage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <PageHeader title="Paramètres" subtitle="Votre compte et l'application" icon={Settings} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -58,7 +58,7 @@ export default function ParametresPage() {
               <a
                 key={s.key}
                 href={`#${s.key}`}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-ink-600 transition-colors hover:bg-cream-50"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-ink-600 transition-colors hover:bg-cream-50"
               >
                 <Icon size={18} className="text-forest-600" />
                 {s.label}
@@ -70,7 +70,7 @@ export default function ParametresPage() {
         {/* Content */}
         <div className="lg:col-span-2 space-y-4">
           <Card id="profile" className="scroll-mt-6 p-5">
-            <h3 className="text-sm font-semibold text-ink-800 mb-4">Profil utilisateur</h3>
+            <h2 className="text-sm font-semibold text-ink-800 mb-4">Profil utilisateur</h2>
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-forest-100 flex items-center justify-center">
@@ -78,7 +78,7 @@ export default function ParametresPage() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-ink-800">{user?.name}</p>
-                  <p className="text-xs text-ink-400">{user?.email}</p>
+                  <p className="text-xs text-ink-500">{user?.email}</p>
                   <Badge className="mt-1 bg-forest-50 text-forest-700">{ROLE_LABELS[user?.role] || user?.role_libelle}</Badge>
                 </div>
               </div>
@@ -86,12 +86,12 @@ export default function ParametresPage() {
                 <Input label="Nom complet" value={user?.name || ''} disabled hint="Modifiable dans la fiche du personnel" />
                 <Input label="Email (identifiant)" value={user?.email || ''} disabled hint="Modifiable par le Big Boss (Utilisateurs)" />
               </div>
-              <p className="text-xs text-ink-400">Dernière connexion : {formatDateTime(user?.derniere_connexion)}</p>
+              <p className="text-xs tabular-nums text-ink-500">Dernière connexion : {formatDateTime(user?.derniere_connexion)}</p>
             </div>
           </Card>
 
           <Card id="security" className="scroll-mt-6 p-5">
-            <h3 className="text-sm font-semibold text-ink-800 mb-4">Changer de mot de passe</h3>
+            <h2 className="text-sm font-semibold text-ink-800 mb-4">Changer de mot de passe</h2>
             <div className="space-y-4">
               <Input
                 label="Mot de passe actuel"
@@ -125,12 +125,12 @@ export default function ParametresPage() {
           </Card>
 
           <Card id="application" className="scroll-mt-6 p-5">
-            <h3 className="text-sm font-semibold text-ink-800 mb-4">Application</h3>
+            <h2 className="text-sm font-semibold text-ink-800 mb-4">Application</h2>
             <div className="space-y-3">
               <div className="flex flex-col gap-3 border-b border-ink-100 py-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-medium text-ink-700">Apparence</p>
-                  <p className="text-xs text-ink-400">Choisissez le thème de l’application</p>
+                  <p className="text-xs text-ink-500">Choisissez le thème de l’application</p>
                 </div>
                 <div className="inline-flex w-fit rounded-lg border border-ink-200 bg-cream-50 p-1" role="radiogroup" aria-label="Thème de l’application">
                   <button
@@ -138,7 +138,7 @@ export default function ParametresPage() {
                     role="radio"
                     aria-checked={theme === 'light'}
                     onClick={() => setTheme('light')}
-                    className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${theme === 'light' ? 'bg-white text-forest-700 shadow-sm' : 'text-ink-500 hover:text-ink-700'}`}
+                    className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${theme === 'light' ? 'bg-white text-forest-700 shadow-sm' : 'text-ink-500 hover:text-ink-700'}`}
                   >
                     <Sun size={16} />
                     Clair
@@ -148,7 +148,7 @@ export default function ParametresPage() {
                     role="radio"
                     aria-checked={theme === 'dark'}
                     onClick={() => setTheme('dark')}
-                    className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${theme === 'dark' ? 'bg-forest-800 text-white shadow-sm' : 'text-ink-500 hover:text-ink-700'}`}
+                    className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${theme === 'dark' ? 'bg-forest-800 text-white shadow-sm' : 'text-ink-500 hover:text-ink-700'}`}
                   >
                     <Moon size={16} />
                     Sombre
@@ -158,14 +158,14 @@ export default function ParametresPage() {
               <div className="flex items-center justify-between py-2 border-b border-ink-100">
                 <div>
                   <p className="text-sm font-medium text-ink-700">Nom de l'application</p>
-                  <p className="text-xs text-ink-400">{APP_NAME}</p>
+                  <p className="text-xs text-ink-500">{APP_NAME}</p>
                 </div>
                 <Badge status="active">Configuré</Badge>
               </div>
               <div className="flex items-center justify-between py-2">
                 <div>
                   <p className="text-sm font-medium text-ink-700">API Django</p>
-                  <p className="text-xs text-ink-400 font-mono">{import.meta.env.VITE_API_URL || '/api/v1'}</p>
+                  <p className="text-xs text-ink-500">{import.meta.env.VITE_API_URL || '/api/v1'}</p>
                 </div>
                 <Badge status="active">Connectée</Badge>
               </div>

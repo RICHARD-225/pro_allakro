@@ -31,9 +31,11 @@ export const STATUS_STYLES = {
   EN_COURS: 'bg-olive-100 text-olive-700',
   TERMINE: 'bg-forest-100 text-forest-700',
   ANNULE: 'bg-ink-100 text-ink-500',
+  ANNULEE: 'bg-ink-100 text-ink-500',
   NON_PAYEE: 'bg-earth-100 text-earth-700',
   PARTIELLE: 'bg-olive-100 text-olive-700',
   PAYEE: 'bg-leaf-100 text-leaf-700',
+  AVANCE: 'bg-olive-100 text-olive-700',
 };
 
 export const ROLE = {
@@ -69,22 +71,43 @@ export const STATUT_TRAVAIL = {
   ANNULE: 'ANNULE',
 };
 export const STATUT_TRAVAIL_LABELS = {
-  PLANIFIE: 'Planifié',
+  PLANIFIE: 'À venir',
   EN_COURS: 'En cours',
   TERMINE: 'Terminé',
   ANNULE: 'Annulé',
 };
 
-// Statuts des dépenses (alignés backend)
+// Statuts des dépenses (alignés backend) : une dépense est « Payée », ou « Avance » tant que la rémunération
+// (ou l'achat) qu'elle règle n'est pas soldé(e). Une dépense saisie à la main est toujours « Payée ».
 export const STATUT_DEPENSE = {
-  NON_PAYEE: 'NON_PAYEE',
-  PARTIELLE: 'PARTIELLE',
+  AVANCE: 'AVANCE',
   PAYEE: 'PAYEE',
 };
 export const STATUT_DEPENSE_LABELS = {
-  NON_PAYEE: 'Non payée',
-  PARTIELLE: 'Partiellement payée',
+  AVANCE: 'Avance',
   PAYEE: 'Payée',
+};
+
+// Règlement d'un achat aux particuliers (distinct du statut de sa dépense)
+export const STATUT_ACHAT_LABELS = {
+  NON_PAYEE: 'Non payé',
+  PARTIELLE: 'Partiellement payé',
+  PAYEE: 'Payé',
+};
+
+// Statuts des rémunérations (section Salaires)
+export const STATUT_SALAIRE_LABELS = {
+  NON_PAYEE: 'À payer',
+  PARTIELLE: 'Partiellement payé',
+  PAYEE: 'Payé',
+  ANNULEE: 'Annulé',
+};
+
+// Rôles dans l'équipe d'un travail
+export const ROLE_TRAVAIL_LABELS = {
+  CHEF: "Chef d'équipe",
+  MEMBRE: 'Membre',
+  RESPONSABLE: 'Responsable',
 };
 
 // Types de paiement (alignés backend)
