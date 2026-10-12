@@ -13,7 +13,7 @@ function Info({ icon: Icon, label, children }) {
       <Icon size={15} className="mt-0.5 shrink-0 text-forest-600" />
       <div className="min-w-0">
         <p className="text-xs font-medium text-ink-500">{label}</p>
-        <p className="text-sm text-ink-800 break-words">{children || '—'}</p>
+        <p className="text-sm text-ink-800 wrap-break-word">{children || '—'}</p>
       </div>
     </div>
   );
@@ -83,7 +83,7 @@ export default function PersonneDetail({ personne, onClose, onChange, onModifier
             </div>
             <Badge status={personne.actif ? 'active' : 'inactive'}>{personne.actif ? 'Active' : 'Inactive'}</Badge>
           </div>
-          <Button variant={personne.actif ? 'outline' : 'success'} size="sm" onClick={basculerStatut} loading={changement}>
+          <Button variant={personne.actif ? 'outline-solid' : 'success'} size="sm" onClick={basculerStatut} loading={changement}>
             {!changement && (personne.actif ? <UserX size={15} /> : <UserCheck size={15} />)}
             {personne.actif ? 'Passer en inactive' : 'Réactiver'}
           </Button>

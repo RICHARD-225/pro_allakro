@@ -38,7 +38,7 @@ export const colonnesMouvements = [
     <span className={`inline-flex items-center gap-1 tabular-nums ${sensDe(row) > 0 ? 'text-leaf-700' : 'text-earth-700'}`}>
       {sensDe(row) > 0 ? <ArrowDownCircle size={14} /> : <ArrowUpCircle size={14} />}
       {sensDe(row) > 0 ? '+' : '−'}{formatNumber(Math.abs(row.quantite))} {row.unite}
-      {row.type_mouvement === 'AJUSTEMENT' && <span className="ml-1 rounded bg-olive-100 px-1.5 text-2xs font-medium text-olive-700">Ajustement</span>}
+      {row.type_mouvement === 'AJUSTEMENT' && <span className="ml-1 rounded-sm bg-olive-100 px-1.5 text-2xs font-medium text-olive-700">Ajustement</span>}
     </span>
   ) },
   { key: 'date', header: 'Date', sortable: true, render: (row) => <span className="tabular-nums">{formatDate(row.date)}</span> },

@@ -75,7 +75,7 @@ export default function NotificationsMenu() {
               </button>
             )}
           </div>
-          <ul className="max-h-[22rem] divide-y divide-ink-100 overflow-y-auto">
+          <ul className="max-h-88 divide-y divide-ink-100 overflow-y-auto">
             {donnees.notifications.length === 0 && <li className="px-3 py-6 text-center text-sm text-ink-500">Aucune notification.</li>}
             {donnees.notifications.map((n) => {
               const Icone = ICONES[n.type] || AlertTriangle;

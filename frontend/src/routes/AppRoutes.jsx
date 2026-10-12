@@ -132,7 +132,7 @@ function FirstLaunchScreen({ children }) {
       {children}
       {showSplash && (
         <div
-          className="fixed inset-0 z-[200] flex flex-col items-center justify-center gap-4 bg-forest-800 text-white"
+          className="fixed inset-0 z-200 flex flex-col items-center justify-center gap-4 bg-forest-800 text-white"
           role="status"
           aria-live="polite"
         >

@@ -138,7 +138,7 @@ export default function ParametresPage() {
                     role="radio"
                     aria-checked={theme === 'light'}
                     onClick={() => setTheme('light')}
-                    className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${theme === 'light' ? 'bg-white text-forest-700 shadow-sm' : 'text-ink-500 hover:text-ink-700'}`}
+                    className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${theme === 'light' ? 'bg-white text-forest-700 shadow-xs' : 'text-ink-500 hover:text-ink-700'}`}
                   >
                     <Sun size={16} />
                     Clair
@@ -148,7 +148,7 @@ export default function ParametresPage() {
                     role="radio"
                     aria-checked={theme === 'dark'}
                     onClick={() => setTheme('dark')}
-                    className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${theme === 'dark' ? 'bg-forest-800 text-white shadow-sm' : 'text-ink-500 hover:text-ink-700'}`}
+                    className={`inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${theme === 'dark' ? 'bg-forest-800 text-white shadow-xs' : 'text-ink-500 hover:text-ink-700'}`}
                   >
                     <Moon size={16} />
                     Sombre

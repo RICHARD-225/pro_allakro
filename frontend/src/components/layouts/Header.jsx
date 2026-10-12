@@ -109,7 +109,7 @@ export default function Header({ onOpenMobileMenu }) {
   }, [searchResults]);
 
   return (
-    <header className="app-header h-16 border-b border-forest-800/40 flex items-center justify-between gap-3 px-3 sm:px-4 lg:px-6 shrink-0 z-30 shadow-sm">
+    <header className="app-header h-16 border-b border-forest-800/40 flex items-center justify-between gap-3 px-3 sm:px-4 lg:px-6 shrink-0 z-30 shadow-xs">
       {/* Left: mobile menu + search */}
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <button

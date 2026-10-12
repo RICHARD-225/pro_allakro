@@ -55,7 +55,7 @@ export function libellePlage(valeur) {
   return debut ? `à partir du ${formatDate(debut)}` : `jusqu'au ${formatDate(fin)}`;
 }
 
-const CHAMP = 'min-w-0 rounded-lg border border-ink-200 bg-white px-2.5 py-2 text-base text-ink-800 transition-colors focus:border-forest-400 focus:outline-none focus:ring-2 focus:ring-forest-100 sm:text-sm';
+const CHAMP = 'min-w-0 rounded-lg border border-ink-200 bg-white px-2.5 py-2 text-base text-ink-800 transition-colors focus:border-forest-400 focus:outline-hidden focus:ring-2 focus:ring-forest-100 sm:text-sm';
 
 export default function FiltrePeriode({ value, onChange, className = '' }) {
   // Les dates exactes de la période choisie sont rappelées sous les indicateurs de la page
