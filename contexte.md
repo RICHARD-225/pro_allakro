@@ -1,7 +1,7 @@
 # ALLAKRO — Contexte complet du projet (pour reprendre le travail)
 
 > **À lire en premier par tout agent ou développeur qui reprend ce projet.** Ce fichier réunit le contexte, les règles, les conventions, les pièges et l'état exact d'avancement. Il complète `ALLAKRO_DOC.md` (référence technique et métier détaillée), `ALLAKRO_MODIFICATIONS.md` (détail des modifications du 11 octobre 2026 et questions ouvertes) et `outils_tests\README.md` (comment tester).
-> **Dernière mise à jour : 11 octobre 2026**, à la fin de la seconde série de modifications. Après toute évolution : mettre à jour ce fichier (partie 9) et `ALLAKRO_DOC.md` (méthode en partie 7 de ce dernier).
+> **Dernière mise à jour : 12 octobre 2026**, après la série « fonctions demandées » (Redis, mot de passe oublié, notifications, clôture mensuelle, pagination serveur, sauvegardes chiffrées). Après toute évolution : mettre à jour ce fichier (partie 9) et `ALLAKRO_DOC.md` (méthode en partie 7 de ce dernier).
 
 ---
 
@@ -138,7 +138,18 @@ index.css              classes de composants, thème sombre, styles du reçu et 
 - **Mots de passe** : 10 caractères, minuscule + majuscule + chiffre.
 - **Outils** : `npm run lint` (ESLint) avant chaque envoi ; `pip-audit` et `npm audit --omit=dev` ; sauvegarde automatique `deploy/sauvegarde_postgres.py` (tâche planifiée « ALLAKRO sauvegarde PostgreSQL ») ; mise en production : `deploy/DEPLOIEMENT.md`.
 - **Dev** : l'origine de l'interface doit figurer dans `CSRF_TRUSTED_ORIGINS` (par défaut = `CORS_ALLOWED_ORIGINS` du `.env`) ; pour les tests navigateur sur un autre port, la passer en variable d'environnement au serveur.
-- État réel et ce qui reste à faire : `ALLAKRO_MODIFICATIONS.md` partie 10.
+- État réel et ce qui reste à faire : `ALLAKRO_MODIFICATIONS.md` parties 10 et 11.
+
+## 4 quater. Services et fonctions ajoutés le 12 octobre 2026
+
+- **Docker Desktop doit tourner** pour Redis (`allakro-redis`, cache des limites de débit, mot de passe dans `CACHE_LOCATION` de `backend/.env`) et Mailpit (`allakro-mail`, boîte de réception de test http://localhost:8025). `deploy/services_dev.ps1` les crée / démarre ; `-Etat` les affiche. Sans Redis, l'application continue (cache tolérant aux pannes, `core/cache.py`). **Ne jamais afficher** les valeurs de `backend/.env` (mot de passe Redis, `SECRET_KEY`, `SAUVEGARDE_CLE`).
+- **Pagination serveur** : `?page=` sur dépenses, travaux, salaires, paiements, achats, personnes, mouvements, journal ; sinon liste complète. Une nouvelle liste volumineuse doit déclarer `search_fields`, `ordering_fields`, éventuellement `totaux_agregats` dans le viewset (`accounts/audit.py`, `BaseViewSet`) et utiliser `hooks/useListeServeur.js` côté interface. La recherche sans accent exige l'extension PostgreSQL `unaccent` (migration `core.0008`).
+- **Clôture mensuelle** : un mois clos est verrouillé (`finances/clotures.py`, `verifier_ouverte`) : toute nouvelle écriture datée doit appeler `verifier_cloture` / `periode_field`. `verifier_coherence` contrôle l'instantané.
+- **Notifications** (`accounts/notifications.py`) : `notifier`, `notifier_big_boss`, `alerte_stock` ; clé unique pour ne pas répéter.
+- **Mot de passe oublié** : `accounts/reinitialisation.py` ; jeton haché, 30 min, usage unique ; envoi SMTP via `EMAIL_*` (Mailpit en dev).
+- **Sauvegardes** : `deploy/sauvegarde_postgres.py --chiffrer --copie <dossier>` (clé `SAUVEGARDE_CLE`, à conserver aussi hors de la machine) ; tâche planifiée quotidienne vers `C:\Users\HP\OneDrive\Sauvegardes ALLAKRO`.
+- **Test d'intrusion interne** : `outils_tests/pentest.py` (instance en mode production sur le port 8002) ; ce n'est pas un test externe indépendant.
+- **Non fait** (à ne pas annoncer comme fait) : double authentification (reportée par l'utilisateur), test d'intrusion externe, envoi réel de courrier, vérification de la synchronisation OneDrive, CI GitHub jamais exécutée, mise en ligne.
 
 ---
 
@@ -209,14 +220,14 @@ Migrations appliquées : core 0001–0006, exploitation 0001–0005, finances **
 
 1. **Droits par campement** pour les superviseurs (filtrer côté serveur, refuser hors périmètre) ; fixer le rôle exact du Big Boss.
 2. **Mise en production** : HTTPS, `DEBUG=False`, nouvelle `SECRET_KEY`, sauvegardes automatiques de PostgreSQL, vrais comptes, versionner `requirements.txt` et figer les versions, nettoyer les restes (`db.sqlite3`, `apps/accounts/backends.py`, templates inutiles, `frontend/src/App.tsx`).
-3. Finances : paiements des dépenses ordinaires, fournisseurs (`tiers`), clôture mensuelle (`bilan_mensuel`), notifications réelles, mouvements d'ajustement dans l'interface Stock.
+3. Finances : paiements des dépenses ordinaires, fournisseurs (`tiers`). (Clôture mensuelle, notifications et ajustements de stock : faits le 12 oct. 2026.)
 4. Qualité : garder le test de bout en bout dans le projet (fait : `outils_tests\`), pagination côté serveur quand les volumes augmenteront, focus gardé dans les fenêtres modales.
 
 ### Dette connue
 
-- Recherche, filtres et pagination des tableaux se font dans le navigateur (seule la période est appliquée par l'API) ; suffisant pour le volume actuel.
+- Pagination, recherche et tri côté serveur pour les grandes listes (12 oct. 2026) ; les référentiels restent chargés d'un coup.
 - 2 personnes sans bloc et quelques anciens travaux sans responsable dans `allakro_db` (à compléter depuis l'interface).
-- « Mot de passe oublié » et « Se souvenir de moi » sont sans effet réel ; pas de notifications.
+- « Se souvenir de moi » sans effet réel ; notifications par interrogation toutes les 60 s (pas de poussée) ; mot de passe oublié testé avec Mailpit seulement.
 - Impression : testée par le PDF d'impression du navigateur, pas sur une imprimante.
 
 ---

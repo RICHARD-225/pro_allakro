@@ -56,7 +56,7 @@ const api = (methode, chemin, corps, { sansCsrf = false } = {}) => page.evaluate
 }, methode, chemin, corps ?? null, sansCsrf);
 // Les montants sont formatés avec des espaces insécables : on les remplace par des espaces simples
 const espaces = (t) => (t || '').replace(/[\u202f\u00a0]/g, ' ');
-const toasts = async () => espaces(await page.evaluate(() => document.querySelector('div.fixed.z-\\[100\\]')?.innerText || ''));
+const toasts = async () => espaces(await page.evaluate(() => document.querySelector('div.fixed[class*="z-"][class*="100"]')?.innerText || ''));
 const fermerToasts = () => page.evaluate(() => document.querySelectorAll('[aria-label="Fermer la notification"]').forEach((b) => b.click()));
 const dialogueTexte = async () => espaces(await page.evaluate(() => { const d = [...document.querySelectorAll('[role=dialog]')]; return d.length ? d[d.length - 1].innerText : ''; }));
 const texteMain = async () => espaces(await page.evaluate(() => document.querySelector('main').innerText));
@@ -201,7 +201,8 @@ const etape = async (nom, fn) => {
 };
 const connexion = async (email, motDePasse) => {
   await aller('/login');
-  await page.evaluate(() => localStorage.setItem('allakro_startup_seen', 'true'));
+  await page.evaluate(() => { localStorage.setItem('allakro_startup_seen', 'true'); localStorage.setItem('allakro_theme', 'light'); });
+  await page.reload({ waitUntil: 'networkidle0' });
   await page.type('input[type=email]', email);
   await page.type('input[autocomplete="current-password"]', motDePasse);
   await page.evaluate(() => [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Se connecter')).click());

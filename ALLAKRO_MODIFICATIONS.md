@@ -459,7 +459,11 @@ Demande : régler tous les problèmes de sécurité de l'audit et les améliorat
 ### 11.11 Avis de sécurité des outils de build
 
 - Avant : 8 avis `npm audit` sur la chaîne de développement de Tailwind 3 (aucun en production : `npm audit --omit=dev` = 0).
-- Résultat : voir la fin de cette partie (mise à jour en cours au moment de ce commit : Tailwind 3 conservé dans ce commit).
+- **Fait sur une branche à part, `tailwind4` (non fusionnée dans `main`)** : migration vers Tailwind CSS 4 avec l'outil officiel de mise à jour. `npm audit` : **0 vulnérabilité** (sur `main`, avec Tailwind 3 : les 8 avis restent, tous sur des outils de développement).
+- **Vérifié sur cette branche :** ESLint 0 problème ; build ; **test de bout en bout 197 vérifications sur 197** (sur le build) ; **axe : 0 violation** sur la connexion et 17 pages (script d audit en bureau et mobile) ; pas de débordement horizontal (contrôlé par le test).
+- **Ce que la migration a cassé et que j'ai dû corriger :** (1) le **thème sombre** : avec Tailwind 3, les composants `@apply bg-white` (`.card`, `.input-base`…) recopiaient les surcharges sombres ; avec Tailwind 4 ce n'est plus vrai, les cartes restaient blanches avec du texte clair. J'ai ajouté les règles sombres explicites ; (2) un décalage de 6 px du séparateur de la barre latérale (marge redondante). Le test de bout en bout a aussi dû être adapté (une classe `z-[100]` devenue `z-100`).
+- **Réserve honnête :** la comparaison de captures avec Tailwind 3 n'est pas parfaitement comparable (la base de démonstration n'était pas dans le même état) ; j'ai relu les images, la mise en page est la même, mais **je ne peux pas garantir l'absence de petits décalages de 1 à 2 px ailleurs** (Tailwind 4 change quelques valeurs par défaut : bordures, ombres, anneaux). Les pages que je n'ai pas vues à l'œil (fenêtres peu fréquentes, états d'erreur) sont à regarder avant de fusionner.
+- **Pour l'adopter :** `git merge tailwind4` puis, dans `frontend`, `npm install` ; **arrêter puis relancer votre serveur de l'interface (5173)** (le serveur actuel utilise les dépendances de Tailwind 3). Pour revenir en arrière : ne pas fusionner, ou `git revert`.
 
 ### 11.12 Ce qui n'est PAS fait ou PAS vérifié
 
@@ -472,6 +476,7 @@ Demande : régler tous les problèmes de sécurité de l'audit et les améliorat
 | Intégration continue GitHub (`.github/workflows/ci.yml`) | **Jamais exécutée** |
 | Mise en ligne (HTTPS, nginx, gunicorn, domaine) | **Non faite** : fichiers fournis dans `deploy/` |
 | TypeScript | **Non fait** |
+| Tailwind 4 (0 avis npm) | **Prêt sur la branche `tailwind4`, non fusionné** : à décider (11.11) |
 
 ### 11.13 Fichiers
 
