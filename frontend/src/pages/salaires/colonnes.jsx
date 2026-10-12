@@ -15,7 +15,7 @@ export const colonnesRemunerations = [
   {
     key: 'libelle', header: 'Rémunération', sortable: true,
     render: (row) => (
-      <span className="block min-w-0 max-w-[15rem] whitespace-normal">
+      <span className="block min-w-0 max-w-60 whitespace-normal">
         <span className="font-medium text-ink-800">{row.travail ? row.travail.activite : row.libelle}</span>
         <span className="block text-xs text-ink-500">{formatPeriode(row.periode)} · {row.bloc_code || '—'}</span>
       </span>

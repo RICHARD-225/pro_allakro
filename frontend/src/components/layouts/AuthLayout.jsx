@@ -45,13 +45,13 @@ export default function AuthLayout() {
             backgroundPosition: 'center',
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-forest-950/85 via-forest-900/65 to-forest-800/30" />
+        <div className="absolute inset-0 bg-linear-to-r from-forest-950/85 via-forest-900/65 to-forest-800/30" />
         <div className="absolute inset-0 opacity-10" style={{
           backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(81, 151, 68, 0.4) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(151, 144, 47, 0.3) 0%, transparent 50%)',
         }} />
         <div className="relative z-10 flex flex-col justify-between p-6 sm:p-8 lg:p-12 text-white w-full h-full">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-lg">
+            <div className="w-11 h-11 rounded-xl bg-white/10 backdrop-blur-xs border border-white/20 flex items-center justify-center shadow-lg">
               <Sprout size={24} className="text-white" />
             </div>
             <div>
@@ -59,7 +59,7 @@ export default function AuthLayout() {
               <p className="text-xs text-forest-100">{APP_TAGLINE}</p>
             </div>
           </div>
-          <div className="max-w-md rounded-2xl bg-black/15 backdrop-blur-sm border border-white/10 p-5 shadow-xl">
+          <div className="max-w-md rounded-2xl bg-black/15 backdrop-blur-xs border border-white/10 p-5 shadow-xl">
             <h1 className="text-3xl font-bold leading-tight mb-3">
               Gérez vos plantations<br />avec précision
             </h1>
@@ -73,7 +73,7 @@ export default function AuthLayout() {
             <button
               type="button"
               onClick={handleInstall}
-              className="inline-flex w-fit items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-white/15"
+              className="inline-flex w-fit items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur-xs transition hover:bg-white/15"
             >
               <Download size={16} />
               Télécharger l'app

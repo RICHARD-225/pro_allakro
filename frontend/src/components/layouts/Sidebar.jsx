@@ -148,7 +148,7 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
           // Sidebar repliée : on affiche directement les icônes des pages
           if (collapsed) {
             return (
-              <div key={section.title} className="pt-2 mt-2 border-t app-sidebar-divider space-y-0.5">
+              <div key={section.title} className="pt-2 border-t app-sidebar-divider space-y-0.5">
                 {section.items.map((item) => (
                   <NavItem key={item.to} item={item} collapsed onClick={onCloseMobile} />
                 ))}
@@ -179,7 +179,7 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
           );
         })}
 
-        <div className="pt-2 mt-2 border-t app-sidebar-divider">
+        <div className="pt-2 border-t app-sidebar-divider">
           <NavItem item={PARAMETRES} collapsed={collapsed} onClick={onCloseMobile} />
         </div>
       </nav>
@@ -211,7 +211,7 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
       {/* Mobile drawer */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50 animate-fade-in">
-          <div className="absolute inset-0 bg-ink-950/40 backdrop-blur-sm" onClick={onCloseMobile} />
+          <div className="absolute inset-0 bg-ink-950/40 backdrop-blur-xs" onClick={onCloseMobile} />
           <aside className="app-sidebar absolute left-0 top-0 bottom-0 w-64 flex flex-col animate-slide-in-left shadow-soft-lg pt-[env(safe-area-inset-top)]">
             {content}
           </aside>

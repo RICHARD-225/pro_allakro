@@ -126,7 +126,7 @@ export default function Select({
           <button
             type="button"
             onClick={() => emit('')}
-            className="absolute right-8 top-1/2 -translate-y-1/2 p-0.5 rounded text-ink-300 hover:text-ink-600"
+            className="absolute right-8 top-1/2 -translate-y-1/2 p-0.5 rounded-sm text-ink-300 hover:text-ink-600"
             aria-label="Effacer la sélection"
             tabIndex={-1}
           >

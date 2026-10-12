@@ -249,7 +249,7 @@ export default function PersonnesPage() {
           {enModification && (
             <label className="flex items-center gap-2 text-sm text-ink-700">
               <input type="checkbox" checked={form.actif} onChange={(e) => setForm({ ...form, actif: e.target.checked })}
-                className="h-4 w-4 rounded border-ink-300 text-forest-600" />
+                className="h-4 w-4 rounded-sm border-ink-300 text-forest-600" />
               Personne active
             </label>
           )}

@@ -1,6 +1,367 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@custom-variant dark (&:is([data-theme="dark"] *));
+
+@theme {
+  --color-forest-50: #f0f7f2;
+  --color-forest-100: #dceee0;
+  --color-forest-200: #bbdec4;
+  --color-forest-300: #8ec59d;
+  --color-forest-400: #5da772;
+  --color-forest-500: #3e8b54;
+  --color-forest-600: #2f6142;
+  --color-forest-700: #265737;
+  --color-forest-800: #21462e;
+  --color-forest-900: #1c3a27;
+  --color-forest-950: #0e2015;
+
+  --color-leaf-50: #f2f9ef;
+  --color-leaf-100: #e1f2dc;
+  --color-leaf-200: #c5e5bc;
+  --color-leaf-300: #9ed391;
+  --color-leaf-400: #73b063;
+  --color-leaf-500: #519744;
+  --color-leaf-600: #3d7a33;
+  --color-leaf-700: #31602a;
+  --color-leaf-800: #2a4d25;
+  --color-leaf-900: #244120;
+  --color-leaf-950: #10230e;
+
+  --color-olive-50: #faf9ec;
+  --color-olive-100: #f3f1d2;
+  --color-olive-200: #e7e3a8;
+  --color-olive-300: #c8c45e;
+  --color-olive-400: #b5b03f;
+  --color-olive-500: #97902f;
+  --color-olive-600: #7a7224;
+  --color-olive-700: #5e561e;
+  --color-olive-800: #4e461d;
+  --color-olive-900: #433d1c;
+  --color-olive-950: #25210d;
+
+  --color-sage-50: #f4f7f5;
+  --color-sage-100: #e5ece7;
+  --color-sage-200: #cedcd2;
+  --color-sage-300: #aab4ae;
+  --color-sage-400: #7fa385;
+  --color-sage-500: #5e8767;
+  --color-sage-600: #486d50;
+  --color-sage-700: #3b5741;
+  --color-sage-800: #324737;
+  --color-sage-900: #2b3b2f;
+  --color-sage-950: #16201a;
+
+  --color-earth-50: #fbf6f2;
+  --color-earth-100: #f5eae1;
+  --color-earth-200: #ebd3c1;
+  --color-earth-300: #deb59a;
+  --color-earth-400: #cd8f6e;
+  --color-earth-500: #ad6e47;
+  --color-earth-600: #9b5839;
+  --color-earth-700: #814631;
+  --color-earth-800: #693a2c;
+  --color-earth-900: #573327;
+  --color-earth-950: #2f1813;
+
+  --color-ink-50: #f6f7f6;
+  --color-ink-100: #e7e9e7;
+  --color-ink-200: #d0d4d0;
+  --color-ink-300: #acb3ac;
+  --color-ink-400: #717871;
+  --color-ink-500: #636a63;
+  --color-ink-600: #525852;
+  --color-ink-700: #434743;
+  --color-ink-800: #383b38;
+  --color-ink-900: #232523;
+  --color-ink-950: #111211;
+
+  --color-cream-50: #fbfaf7;
+  --color-cream-100: #f4f0e6;
+  --color-cream-200: #eae2cd;
+  --color-cream-300: #ded1ae;
+  --color-cream-400: #d1be8e;
+  --color-cream-500: #beaa75;
+  --color-cream-600: #aa9361;
+  --color-cream-700: #8e794f;
+  --color-cream-800: #736242;
+  --color-cream-900: #5e5037;
+  --color-cream-950: #322a1c;
+
+  --font-sans:
+    'Inter Variable', Inter, ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-card-hover:
+    0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+  --shadow-soft-lg:
+    0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+  --shadow-soft-md:
+    0 -2px 10px rgba(0, 0, 0, 0.05), 0 2px 6px rgba(0, 0, 0, 0.04);
+
+  --animate-shimmer: shimmer 2s infinite linear;
+  --animate-fade-in: fadeIn 0.2s ease-out;
+  --animate-slide-in-left: slideInLeft 0.25s ease-out;
+  --animate-slide-in-right: slideInRight 0.2s ease-out;
+  --animate-scale-in: scaleIn 0.15s ease-out;
+  --animate-sheet-up: sheetUp 0.22s ease-out;
+
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+  @keyframes fadeIn {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  @keyframes slideInLeft {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(0);
+    }
+  }
+  @keyframes slideInRight {
+    0% {
+      opacity: 0;
+      transform: translateX(16px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  @keyframes scaleIn {
+    0% {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes sheetUp {
+    0% {
+      transform: translateY(100%);
+    }
+    100% {
+      transform: translateY(0);
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility app-sidebar {
+  /* Identité ALLAKRO : barre latérale et en-tête verts (texte clair, contraste élevé) */
+  background: linear-gradient(
+    180deg,
+    var(--color-forest-800) 0%,
+    var(--color-forest-950) 100%
+  );
+  color: var(--color-forest-100);
+}
+
+@utility app-sidebar-divider {
+  border-color: rgb(255 255 255 / 0.12);
+}
+
+@utility side-item {
+  @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 cursor-pointer;
+  color: rgb(220 238 224 / 0.88);
+  &:hover {
+    background-color: rgb(255 255 255 / 0.09);
+    color: #fff;
+  }
+  &:hover .side-item-icon {
+    color: var(--color-leaf-300);
+  }
+}
+
+@utility side-item-active {
+  background-color: rgb(255 255 255 / 0.15);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--color-leaf-300);
+  &:hover {
+    background-color: rgb(255 255 255 / 0.15);
+    color: #fff;
+    font-weight: 600;
+    box-shadow: inset 3px 0 0 var(--color-leaf-300);
+  }
+  & .side-item-icon {
+    color: var(--color-leaf-300);
+  }
+}
+
+@utility side-item-icon {
+  color: var(--color-forest-200);
+  .side-item-active & {
+    color: var(--color-leaf-300);
+  }
+
+  .side-item:hover & {
+    color: var(--color-leaf-300);
+  }
+}
+
+@utility app-header {
+  background: linear-gradient(
+    90deg,
+    var(--color-forest-700) 0%,
+    var(--color-forest-600) 100%
+  );
+  color: #fff;
+}
+
+@utility header-btn {
+  @apply rounded-lg p-2 transition-colors;
+  color: rgb(255 255 255 / 0.88);
+  &:hover {
+    background-color: rgb(255 255 255 / 0.14);
+    color: #fff;
+  }
+}
+
+@utility header-search {
+  @apply w-full pl-9 pr-3 py-2 text-base sm:text-sm rounded-lg transition-all;
+  background-color: rgb(255 255 255 / 0.13);
+  border: 1px solid rgb(255 255 255 / 0.22);
+  color: #fff;
+  &::placeholder {
+    color: rgb(220 238 224 / 0.8);
+  }
+  &:focus {
+    background-color: #fff;
+    border-color: transparent;
+    color: var(--color-ink-800);
+  }
+  &:focus::placeholder {
+    color: var(--color-ink-400);
+  }
+}
+
+@utility card {
+  /* Card */
+  @apply bg-white rounded-xl shadow-card border border-ink-100/60;
+  transition: box-shadow 0.2s ease;
+}
+
+@utility card-hover {
+  &:hover {
+    @apply shadow-card-hover;
+  }
+}
+
+@utility btn {
+  /* Button base */
+  @apply inline-flex items-center justify-center gap-2 font-medium rounded-lg
+           transition-all duration-150 select-none whitespace-nowrap
+           disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+@utility skeleton {
+  /* Skeleton */
+  @apply bg-ink-100/60 rounded-sm;
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  background-size: 200% 100%;
+  @apply animate-shimmer;
+}
+
+@utility badge {
+  /* Badge */
+  @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-2xs font-medium;
+}
+
+@utility table-row-hover {
+  /* Table */
+  &:hover {
+    @apply bg-cream-50;
+  }
+}
+
+@utility nav-item {
+  /* Sidebar item */
+  @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
+           text-ink-500 hover:text-forest-700 hover:bg-forest-50/50
+           transition-colors duration-150 cursor-pointer;
+}
+
+@utility nav-item-active {
+  @apply text-forest-700 bg-forest-50 font-semibold;
+  & .nav-item-icon {
+    @apply text-forest-600;
+  }
+}
+
+@utility nav-item-icon {
+  .nav-item-active & {
+    @apply text-forest-600;
+  }
+}
+
+@utility input-base {
+  /* Input */
+  /* 16 px sur téléphone : évite le zoom automatique des navigateurs mobiles à la saisie */
+  @apply w-full px-3 py-2 text-base sm:text-sm bg-white border border-ink-200 rounded-lg
+           text-ink-800 placeholder:text-ink-400
+           focus:border-forest-400 focus:ring-2 focus:ring-forest-100
+           transition-colors duration-150
+           disabled:bg-cream-100 disabled:cursor-not-allowed;
+}
+
+@utility label-base {
+  @apply block text-sm font-medium text-ink-700 mb-1.5;
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@utility no-tap-highlight {
+  -webkit-tap-highlight-color: transparent;
+}
 
 @layer base {
   html {
@@ -21,7 +382,7 @@
   }
 
   *:focus-visible {
-    @apply outline-none ring-2 ring-forest-500 ring-offset-2 ring-offset-cream-100;
+    @apply outline-hidden ring-2 ring-forest-500 ring-offset-2 ring-offset-cream-100;
   }
 
   /* Scrollbar */
@@ -40,266 +401,168 @@
   }
 }
 
-/* Dark mode keeps the existing semantic utility classes readable without duplicating page markup. */
-html[data-theme='dark'] {
-  color-scheme: dark;
-  --dark-page: #111814;
-  --dark-surface: #1b261f;
-  --dark-surface-raised: #233128;
-  --dark-border: #34443a;
-  --dark-text: #e5eee7;
-  --dark-text-secondary: #bdcbbf;
-  --dark-text-muted: #97a89b;
-}
-
-html[data-theme='dark'] body,
-html[data-theme='dark'] .bg-cream-100 {
-  background-color: var(--dark-page) !important;
-  color: var(--dark-text);
-}
-
-html[data-theme='dark'] .bg-white,
-html[data-theme='dark'] .bg-cream-50,
-html[data-theme='dark'] [class*='bg-cream-50/'] {
-  background-color: var(--dark-surface) !important;
-}
-
-html[data-theme='dark'] [class*='bg-cream-100'] {
-  background-color: var(--dark-surface-raised) !important;
-}
-
-html[data-theme='dark'] .text-ink-800,
-html[data-theme='dark'] .text-ink-900,
-html[data-theme='dark'] .text-ink-950 {
-  color: var(--dark-text) !important;
-}
-
-html[data-theme='dark'] .text-ink-600,
-html[data-theme='dark'] .text-ink-700 {
-  color: var(--dark-text-secondary) !important;
-}
-
-html[data-theme='dark'] .text-ink-300,
-html[data-theme='dark'] .text-ink-400,
-html[data-theme='dark'] .text-ink-500 {
-  color: var(--dark-text-muted) !important;
-}
-
-html[data-theme='dark'] .border-ink-100,
-html[data-theme='dark'] .border-ink-200,
-html[data-theme='dark'] [class*='divide-ink-100'] > :not([hidden]) ~ :not([hidden]) {
-  border-color: var(--dark-border) !important;
-}
-
-html[data-theme='dark'] .bg-forest-50,
-html[data-theme='dark'] [class*='bg-forest-50/'],
-html[data-theme='dark'] [class*='bg-leaf-50'],
-html[data-theme='dark'] [class*='bg-sage-50'],
-html[data-theme='dark'] [class*='bg-olive-50'],
-html[data-theme='dark'] [class*='bg-earth-50'] {
-  background-color: var(--dark-surface-raised) !important;
-}
-
-html[data-theme='dark'] .text-forest-600,
-html[data-theme='dark'] .text-forest-700,
-html[data-theme='dark'] .text-leaf-600,
-html[data-theme='dark'] .text-sage-600,
-html[data-theme='dark'] .text-olive-600,
-html[data-theme='dark'] .text-earth-600 {
-  color: #a6d6af !important;
-}
-
-html[data-theme='dark'] input,
-html[data-theme='dark'] select,
-html[data-theme='dark'] textarea {
-  color: var(--dark-text);
-}
-
-html[data-theme='dark'] input::placeholder,
-html[data-theme='dark'] textarea::placeholder {
-  color: var(--dark-text-muted);
-}
-
-/* Pastilles et textes colorés lisibles en mode sombre (fond teinté sombre, texte clair) */
-html[data-theme='dark'] .bg-forest-100 { background-color: rgb(62 139 84 / 0.28) !important; }
-html[data-theme='dark'] .bg-leaf-100 { background-color: rgb(81 151 68 / 0.26) !important; }
-html[data-theme='dark'] .bg-olive-100 { background-color: rgb(151 144 47 / 0.28) !important; }
-html[data-theme='dark'] .bg-earth-100 { background-color: rgb(173 110 71 / 0.28) !important; }
-html[data-theme='dark'] .bg-sage-100 { background-color: rgb(94 135 103 / 0.28) !important; }
-html[data-theme='dark'] .bg-ink-100 { background-color: rgb(255 255 255 / 0.09) !important; }
-html[data-theme='dark'] .text-leaf-700,
-html[data-theme='dark'] .text-forest-800 { color: #b5dfab !important; }
-html[data-theme='dark'] .text-olive-700,
-html[data-theme='dark'] .text-olive-800 { color: #e0d78f !important; }
-html[data-theme='dark'] .text-earth-700 { color: #edb595 !important; }
-html[data-theme='dark'] .text-sage-700 { color: #c1d9c8 !important; }
-
-/* Survols lisibles en mode sombre (les fonds clairs de survol deviennent un gris-vert sombre) */
-html[data-theme='dark'] [class*='hover:bg-cream-50']:hover,
-html[data-theme='dark'] [class*='hover:bg-cream-100']:hover,
-html[data-theme='dark'] [class*='hover:bg-ink-50']:hover,
-html[data-theme='dark'] [class*='hover:bg-forest-50']:hover,
-html[data-theme='dark'] [class*='hover:bg-earth-50']:hover {
-  background-color: var(--dark-surface-raised) !important;
-}
-
-/* Identité ALLAKRO en mode sombre : la barre latérale et l'en-tête restent verts, plus profonds */
-html[data-theme='dark'] .app-sidebar {
-  background: linear-gradient(180deg, #16301f 0%, #0b1a11 100%);
-  border-color: var(--dark-border);
-}
-html[data-theme='dark'] .app-header {
-  background: linear-gradient(90deg, #16301f 0%, #1d3d29 100%);
-  border-color: var(--dark-border);
-}
-html[data-theme='dark'] .header-search:focus {
-  background-color: var(--dark-surface);
-  color: var(--dark-text);
-}
-
-@layer components {
-  /* Identité ALLAKRO : barre latérale et en-tête verts (texte clair, contraste élevé) */
-  .app-sidebar {
-    background: linear-gradient(180deg, theme('colors.forest.800') 0%, theme('colors.forest.950') 100%);
-    color: theme('colors.forest.100');
-  }
-  .app-sidebar-divider {
-    border-color: rgb(255 255 255 / 0.12);
-  }
-  .side-item {
-    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 cursor-pointer;
-    color: rgb(220 238 224 / 0.88);
-  }
-  .side-item:hover {
-    background-color: rgb(255 255 255 / 0.09);
-    color: #fff;
-  }
-  .side-item-active,
-  .side-item-active:hover {
-    background-color: rgb(255 255 255 / 0.15);
-    color: #fff;
-    font-weight: 600;
-    box-shadow: inset 3px 0 0 theme('colors.leaf.300');
-  }
-  .side-item-icon {
-    color: theme('colors.forest.200');
-  }
-  .side-item-active .side-item-icon,
-  .side-item:hover .side-item-icon {
-    color: theme('colors.leaf.300');
-  }
-  .app-header {
-    background: linear-gradient(90deg, theme('colors.forest.700') 0%, theme('colors.forest.600') 100%);
-    color: #fff;
-  }
-  .header-btn {
-    @apply rounded-lg p-2 transition-colors;
-    color: rgb(255 255 255 / 0.88);
-  }
-  .header-btn:hover {
-    background-color: rgb(255 255 255 / 0.14);
-    color: #fff;
-  }
-  .header-search {
-    @apply w-full pl-9 pr-3 py-2 text-base sm:text-sm rounded-lg transition-all;
-    background-color: rgb(255 255 255 / 0.13);
-    border: 1px solid rgb(255 255 255 / 0.22);
-    color: #fff;
-  }
-  .header-search::placeholder {
-    color: rgb(220 238 224 / 0.8);
-  }
-  .header-search:focus {
-    background-color: #fff;
-    border-color: transparent;
-    color: theme('colors.ink.800');
-  }
-  .header-search:focus::placeholder {
-    color: theme('colors.ink.400');
+@layer utilities {
+  /* Dark mode keeps the existing semantic utility classes readable without duplicating page markup. */
+  html[data-theme='dark'] {
+    color-scheme: dark;
+    --dark-page: #111814;
+    --dark-surface: #1b261f;
+    --dark-surface-raised: #233128;
+    --dark-border: #34443a;
+    --dark-text: #e5eee7;
+    --dark-text-secondary: #bdcbbf;
+    --dark-text-muted: #97a89b;
   }
 
-  /* Card */
-  .card {
-    @apply bg-white rounded-xl shadow-card border border-ink-100/60;
-  transition: box-shadow 0.2s ease;
-  }
-  .card-hover:hover {
-    @apply shadow-card-hover;
+  html[data-theme='dark'] body,
+  html[data-theme='dark'] .bg-cream-100 {
+    background-color: var(--dark-page) !important;
+    color: var(--dark-text);
   }
 
-  /* Button base */
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 font-medium rounded-lg
-           transition-all duration-150 select-none whitespace-nowrap
-           disabled:opacity-50 disabled:cursor-not-allowed;
+  html[data-theme='dark'] .bg-white,
+  html[data-theme='dark'] .bg-cream-50,
+  html[data-theme='dark'] [class*='bg-cream-50/'] {
+    background-color: var(--dark-surface) !important;
   }
 
-  /* Skeleton */
-  .skeleton {
-    @apply bg-ink-100/60 rounded;
-    background-image: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-    background-size: 200% 100%;
-    @apply animate-shimmer;
+  html[data-theme='dark'] [class*='bg-cream-100'] {
+    background-color: var(--dark-surface-raised) !important;
   }
 
-  /* Badge */
-  .badge {
-    @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-2xs font-medium;
+  html[data-theme='dark'] .text-ink-800,
+  html[data-theme='dark'] .text-ink-900,
+  html[data-theme='dark'] .text-ink-950 {
+    color: var(--dark-text) !important;
   }
 
-  /* Table */
-  .table-row-hover:hover {
-    @apply bg-cream-50;
+  html[data-theme='dark'] .text-ink-600,
+  html[data-theme='dark'] .text-ink-700 {
+    color: var(--dark-text-secondary) !important;
   }
 
-  /* Sidebar item */
-  .nav-item {
-    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium
-           text-ink-500 hover:text-forest-700 hover:bg-forest-50/50
-           transition-colors duration-150 cursor-pointer;
-  }
-  .nav-item-active {
-    @apply text-forest-700 bg-forest-50 font-semibold;
-  }
-  .nav-item-active .nav-item-icon {
-    @apply text-forest-600;
+  html[data-theme='dark'] .text-ink-300,
+  html[data-theme='dark'] .text-ink-400,
+  html[data-theme='dark'] .text-ink-500 {
+    color: var(--dark-text-muted) !important;
   }
 
-  /* Input */
-  /* 16 px sur téléphone : évite le zoom automatique des navigateurs mobiles à la saisie */
-  .input-base {
-    @apply w-full px-3 py-2 text-base sm:text-sm bg-white border border-ink-200 rounded-lg
-           text-ink-800 placeholder:text-ink-400
-           focus:border-forest-400 focus:ring-2 focus:ring-forest-100
-           transition-colors duration-150
-           disabled:bg-cream-100 disabled:cursor-not-allowed;
+  html[data-theme='dark'] .border-ink-100,
+  html[data-theme='dark'] .border-ink-200,
+  html[data-theme='dark']
+    [class*='divide-ink-100']
+    > :not([hidden])
+    ~ :not([hidden]) {
+    border-color: var(--dark-border) !important;
   }
 
-  .label-base {
-    @apply block text-sm font-medium text-ink-700 mb-1.5;
+  html[data-theme='dark'] .bg-forest-50,
+  html[data-theme='dark'] [class*='bg-forest-50/'],
+  html[data-theme='dark'] [class*='bg-leaf-50'],
+  html[data-theme='dark'] [class*='bg-sage-50'],
+  html[data-theme='dark'] [class*='bg-olive-50'],
+  html[data-theme='dark'] [class*='bg-earth-50'] {
+    background-color: var(--dark-surface-raised) !important;
   }
-}
 
-/* Moins d'animations pour les personnes qui le demandent au système */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+  html[data-theme='dark'] .text-forest-600,
+  html[data-theme='dark'] .text-forest-700,
+  html[data-theme='dark'] .text-leaf-600,
+  html[data-theme='dark'] .text-sage-600,
+  html[data-theme='dark'] .text-olive-600,
+  html[data-theme='dark'] .text-earth-600 {
+    color: #a6d6af !important;
+  }
+
+  html[data-theme='dark'] input,
+  html[data-theme='dark'] select,
+  html[data-theme='dark'] textarea {
+    color: var(--dark-text);
+  }
+
+  html[data-theme='dark'] input::placeholder,
+  html[data-theme='dark'] textarea::placeholder {
+    color: var(--dark-text-muted);
+  }
+
+  /* Pastilles et textes colorés lisibles en mode sombre (fond teinté sombre, texte clair) */
+  html[data-theme='dark'] .bg-forest-100 {
+    background-color: rgb(62 139 84 / 0.28) !important;
+  }
+  html[data-theme='dark'] .bg-leaf-100 {
+    background-color: rgb(81 151 68 / 0.26) !important;
+  }
+  html[data-theme='dark'] .bg-olive-100 {
+    background-color: rgb(151 144 47 / 0.28) !important;
+  }
+  html[data-theme='dark'] .bg-earth-100 {
+    background-color: rgb(173 110 71 / 0.28) !important;
+  }
+  html[data-theme='dark'] .bg-sage-100 {
+    background-color: rgb(94 135 103 / 0.28) !important;
+  }
+  html[data-theme='dark'] .bg-ink-100 {
+    background-color: rgb(255 255 255 / 0.09) !important;
+  }
+  html[data-theme='dark'] .text-leaf-700,
+  html[data-theme='dark'] .text-forest-800 {
+    color: #b5dfab !important;
+  }
+  html[data-theme='dark'] .text-olive-700,
+  html[data-theme='dark'] .text-olive-800 {
+    color: #e0d78f !important;
+  }
+  html[data-theme='dark'] .text-earth-700 {
+    color: #edb595 !important;
+  }
+  html[data-theme='dark'] .text-sage-700 {
+    color: #c1d9c8 !important;
+  }
+
+  /* Composants @apply : Tailwind 4 ne recopie plus les surcharges sombres visant les utilitaires appliqués, on les redit ici */
+  html[data-theme='dark'] .card { background-color: var(--dark-surface) !important; border-color: var(--dark-border) !important; }
+  html[data-theme='dark'] .input-base { background-color: var(--dark-surface) !important; border-color: var(--dark-border) !important; color: var(--dark-text) !important; }
+  html[data-theme='dark'] .input-base:disabled { background-color: var(--dark-surface-raised) !important; }
+  html[data-theme='dark'] .input-base::placeholder { color: var(--dark-text-muted) !important; }
+  html[data-theme='dark'] .label-base { color: var(--dark-text-secondary) !important; }
+  html[data-theme='dark'] .table-row-hover:hover { background-color: var(--dark-surface-raised) !important; }
+  html[data-theme='dark'] .nav-item { color: var(--dark-text-muted) !important; }
+  html[data-theme='dark'] .nav-item-active { background-color: var(--dark-surface-raised) !important; color: #a6d6af !important; }
+  html[data-theme='dark'] .skeleton { background-color: rgb(255 255 255 / 0.09) !important; }
+
+  /* Survols lisibles en mode sombre (les fonds clairs de survol deviennent un gris-vert sombre) */
+  html[data-theme='dark'] [class*='hover:bg-cream-50']:hover,
+  html[data-theme='dark'] [class*='hover:bg-cream-100']:hover,
+  html[data-theme='dark'] [class*='hover:bg-ink-50']:hover,
+  html[data-theme='dark'] [class*='hover:bg-forest-50']:hover,
+  html[data-theme='dark'] [class*='hover:bg-earth-50']:hover {
+    background-color: var(--dark-surface-raised) !important;
+  }
+
+  /* Identité ALLAKRO en mode sombre : la barre latérale et l'en-tête restent verts, plus profonds */
+  html[data-theme='dark'] .app-sidebar {
+    background: linear-gradient(180deg, #16301f 0%, #0b1a11 100%);
+    border-color: var(--dark-border);
+  }
+  html[data-theme='dark'] .app-header {
+    background: linear-gradient(90deg, #16301f 0%, #1d3d29 100%);
+    border-color: var(--dark-border);
+  }
+  html[data-theme='dark'] .header-search:focus {
+    background-color: var(--dark-surface);
+    color: var(--dark-text);
   }
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-  .scrollbar-none {
-    scrollbar-width: none;
-  }
-  .scrollbar-none::-webkit-scrollbar {
-    display: none;
-  }
-  .no-tap-highlight {
-    -webkit-tap-highlight-color: transparent;
+  /* Moins d'animations pour les personnes qui le demandent au système */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 

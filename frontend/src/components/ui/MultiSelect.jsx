@@ -49,7 +49,7 @@ export default function MultiSelect({ label, options = [], value = [], onChange,
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={placeholder}
-            className="w-full rounded-t-lg bg-transparent py-2 pl-8 pr-3 text-base text-ink-800 placeholder:text-ink-400 focus:outline-none sm:text-sm"
+            className="w-full rounded-t-lg bg-transparent py-2 pl-8 pr-3 text-base text-ink-800 placeholder:text-ink-400 focus:outline-hidden sm:text-sm"
           />
         </div>
         <ul className="max-h-52 overflow-y-auto py-1">
@@ -61,7 +61,7 @@ export default function MultiSelect({ label, options = [], value = [], onChange,
                   type="checkbox"
                   checked={selected.has(o.value)}
                   onChange={() => toggle(o.value)}
-                  className="h-4 w-4 rounded border-ink-300 text-forest-600 focus:ring-forest-200"
+                  className="h-4 w-4 rounded-sm border-ink-300 text-forest-600 focus:ring-forest-200"
                 />
                 <span className="flex-1 truncate">{o.label}</span>
                 {o.hint && <span className="text-xs text-ink-400 truncate">{o.hint}</span>}

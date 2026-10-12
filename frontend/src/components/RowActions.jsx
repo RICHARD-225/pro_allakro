@@ -106,7 +106,7 @@ export default function RowActions({
           role="menu"
           onClick={(e) => e.stopPropagation()}
           style={position ? { top: position.top, left: position.left } : { top: -9999, left: -9999 }}
-          className="fixed z-[70] min-w-[11rem] rounded-lg border border-ink-100 bg-white py-1 shadow-soft-lg"
+          className="fixed z-70 min-w-44 rounded-lg border border-ink-100 bg-white py-1 shadow-soft-lg"
         >
           {elements.map((element, i) => {
             const Icone = element.icon;

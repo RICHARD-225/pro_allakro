@@ -12,7 +12,7 @@ function SortHeader({ column, sortBy, sortDir, onSort }) {
   const isActive = sortBy === column.key;
   const Icon = isActive ? (sortDir === 'asc' ? ChevronUp : ChevronDown) : ChevronsUpDown;
   return (
-    <th aria-sort={isActive ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} className="first:[&>button]:pl-5">
+    <th aria-sort={isActive ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} className="[&>button]:first:pl-5">
       <button
         type="button"
         onClick={() => onSort(column.key)}
@@ -30,7 +30,7 @@ function SortHeader({ column, sortBy, sortDir, onSort }) {
 const CELLULE = 'whitespace-nowrap border-y border-ink-100 bg-white px-4 py-4 text-sm text-ink-700 transition-colors '
   + 'first:rounded-l-xl first:border-l first:border-l-[3px] first:border-l-forest-200 first:pl-5 '
   + 'last:rounded-r-xl last:border-r last:pr-5 '
-  + 'group-hover:border-y-forest-200 group-hover:bg-forest-50/60 group-hover:first:border-l-forest-500 group-hover:last:border-r-forest-200';
+  + 'group-hover:border-y-forest-200 group-hover:bg-forest-50/60 first:group-hover:border-l-forest-500 last:group-hover:border-r-forest-200';
 
 const cellule = (col, row) => (col.render ? col.render(row) : (row[col.key] ?? '—'));
 
@@ -144,7 +144,7 @@ export default function DataTable({
       />
       {recherche && (
         <button type="button" onClick={() => changerRecherche('')} aria-label="Effacer la recherche"
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-ink-300 hover:text-ink-600">
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-ink-300 hover:text-ink-600">
           <X size={14} />
         </button>
       )}
@@ -268,7 +268,7 @@ export default function DataTable({
             return (
               <div
                 key={cle}
-                className={`rounded-xl border border-l-[3px] border-ink-100 border-l-forest-300 bg-white px-4 py-4 shadow-sm ${onRowClick ? 'cursor-pointer active:bg-forest-50/60' : ''}`}
+                className={`rounded-xl border border-l-[3px] border-ink-100 border-l-forest-300 bg-white px-4 py-4 shadow-xs ${onRowClick ? 'cursor-pointer active:bg-forest-50/60' : ''}`}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
               >
                 {titreMobile && <div className="min-w-0 text-sm font-medium text-ink-800">{cellule(titreMobile, row)}</div>}
@@ -312,7 +312,7 @@ export default function DataTable({
               value={taillePage}
               onChange={(e) => { if (distant) serveur.onPageSize(Number(e.target.value)); else { setPageSize(Number(e.target.value)); setCurrentPage(1); } }}
               aria-label="Lignes par page"
-              className="bg-white border border-ink-200 rounded px-1.5 py-1 text-xs text-ink-600"
+              className="bg-white border border-ink-200 rounded-sm px-1.5 py-1 text-xs text-ink-600"
             >
               {PAGE_SIZE_OPTIONS.map((s) => (
                 <option key={s} value={s}>{s} / page</option>

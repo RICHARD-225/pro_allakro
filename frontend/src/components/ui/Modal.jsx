@@ -72,14 +72,14 @@ export default function Modal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center animate-fade-in sm:items-center sm:p-4">
-      <div className="absolute inset-0 bg-ink-950/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-ink-950/40 backdrop-blur-xs" onClick={onClose} />
       <div
         ref={fenetre}
         role="dialog"
         aria-modal="true"
         aria-label={typeof title === 'string' ? title : undefined}
         tabIndex={-1}
-        className={`relative outline-none flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-white shadow-soft-lg animate-sheet-up sm:max-h-[90vh] sm:rounded-xl sm:animate-scale-in ${SIZES[size]}`}
+        className={`relative outline-hidden flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-white shadow-soft-lg animate-sheet-up sm:max-h-[90vh] sm:rounded-xl sm:animate-scale-in ${SIZES[size]}`}
       >
         <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-ink-200 sm:hidden" aria-hidden="true" />
         {title && (

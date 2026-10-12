@@ -161,7 +161,7 @@ export default function ReferentielPage({ title, subtitle, icon, service, itemLa
               return (
                 <label key={f.key} className="flex items-start gap-2 text-sm text-ink-700">
                   <input type="checkbox" checked={!!form[f.key]} onChange={(e) => setForm({ ...form, [f.key]: e.target.checked })}
-                    className="mt-0.5 h-4 w-4 rounded border-ink-300 text-forest-600" />
+                    className="mt-0.5 h-4 w-4 rounded-sm border-ink-300 text-forest-600" />
                   <span>{f.label}{f.hint && <span className="block text-xs text-ink-500">{f.hint}</span>}</span>
                 </label>
               );
