@@ -12,4 +12,13 @@ env/
 .venv/
 ALLAKRO_DOC.md
 .claude/
-requirements.txt
+
+# Outils de vérification : images, téléchargements et captures produits par les scripts
+outils_tests/ecrans_e2e/
+outils_tests/telechargements_e2e/
+outils_tests/captures_*/
+logs/
+.vite/
+alakro_sauvegardes/
+*.dump
+*.chiffre

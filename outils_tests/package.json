@@ -1,0 +1,9 @@
+{
+  "name": "allakro-outils-tests",
+  "private": true,
+  "type": "module",
+  "description": "Outils de vérification d'ALLAKRO (test de bout en bout dans Edge, captures d'écran) : voir README.md",
+  "dependencies": {
+    "puppeteer-core": "^25.12.0"
+  }
+}

@@ -1,0 +1,24 @@
+# ALLAKRO — service systemd de l'API (Linux). Copier dans /etc/systemd/system/, puis :
+#   systemctl daemon-reload && systemctl enable --now allakro-api
+[Unit]
+Description=ALLAKRO API (gunicorn)
+After=network.target postgresql.service
+
+[Service]
+User=allakro
+Group=allakro
+WorkingDirectory=/opt/allakro/backend
+EnvironmentFile=/opt/allakro/backend/.env
+ExecStart=/opt/allakro/env/bin/gunicorn PRoAll.wsgi:application --bind 127.0.0.1:8000 --workers 3 --timeout 60 --access-logfile - --error-logfile -
+Restart=on-failure
+RestartSec=3
+
+# Durcissement du processus
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/allakro/backend/logs
+
+[Install]
+WantedBy=multi-user.target
