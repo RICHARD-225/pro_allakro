@@ -109,7 +109,7 @@ export default function ParametresPage() {
                   value={mdp.nouveau_mot_de_passe}
                   onChange={(e) => setMdp({ ...mdp, nouveau_mot_de_passe: e.target.value })}
                   error={mdpErrors.nouveau_mot_de_passe}
-                  hint="8 caractères minimum, pas uniquement des chiffres"
+                  hint="10 caractères minimum, avec majuscule, minuscule et chiffre"
                 />
                 <Input
                   label="Confirmer"

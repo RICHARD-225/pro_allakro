@@ -339,3 +339,73 @@ class PerimetreParCampementTests(ApiTestCase):
         self.assertEqual(refus.status_code, 403)
         from apps.core.models import Personne
         self.assertEqual(Personne.objects.get(pk=ma_fiche).bloc_id, self.bloc['id'])
+
+    # ---- Responsables de campements et droits du superviseur (13 octobre 2026) ----
+
+    def test_seuls_les_superviseurs_actifs_sont_proposes_comme_responsables(self):
+        self.assertEqual(self.client.get('/api/v1/campements/responsables/').status_code, 403)  # superviseur
+        self.login(self.admin.username)
+        propose = {p['id'] for p in self.get('campements/responsables/')}
+        self.assertEqual(propose, {self.superviseur.personne_id})  # ni le Big Boss, ni les ouvriers sans compte
+        # Une personne sans compte est refusée par l'API, même si l'interface ne la propose pas
+        refus = self.client.post('/api/v1/campements/', {'nom': 'Camp C', 'plantation_id': self.plantation['id'], 'superficie': 1,
+                                                          'responsable_id': self.personne_b['id']}, format='json')
+        self.assertEqual(refus.status_code, 400)
+        self.assertIn('responsable_id', refus.json())
+        refus = self.client.post('/api/v1/campements/', {'nom': 'Camp C', 'plantation_id': self.plantation['id'], 'superficie': 1,
+                                                          'responsable_id': self.admin.personne_id}, format='json')
+        self.assertEqual(refus.status_code, 400)  # le Big Boss n'est pas un responsable de campement
+        # Un compte désactivé n'est plus proposé
+        Utilisateur.objects.filter(pk=self.superviseur.pk).update(actif=False)
+        self.assertEqual(self.get('campements/responsables/'), [])
+
+    def test_un_responsable_gere_plusieurs_campements(self):
+        self.login(self.admin.username)
+        responsable = self.superviseur.personne_id
+        c1 = self.post('campements/', {'nom': 'Camp C', 'plantation_id': self.plantation['id'], 'superficie': 0, 'responsable_id': responsable})
+        c2 = self.post('campements/', {'nom': 'Camp D', 'plantation_id': self.plantation['id'], 'superficie': 0, 'responsable_id': responsable})
+        ligne = [p for p in self.get('campements/responsables/') if p['id'] == responsable][0]
+        self.assertEqual(sorted(ligne['campements']), ['Camp C', 'Camp D'])
+        # Son périmètre = son campement d'affectation + les campements dont il est responsable (pas les autres)
+        self.login(self.superviseur.username)
+        self.assertEqual(self.ids('campements/'), {self.campement['id'], c1['id'], c2['id']})
+        self.assertNotIn(self.campement_b['id'], self.ids('campements/'))
+        self.assertEqual(self.client.get(f"/api/v1/campements/{self.campement_b['id']}/").status_code, 404)
+        # Il peut choisir l'un de ses campements dans le tableau de bord, pas celui d'un autre
+        ok = self.client.get(f"/api/v1/tableau-de-bord/?campement_id={c2['id']}")
+        self.assertEqual(ok.status_code, 200)
+        self.assertEqual(self.client.get(f"/api/v1/tableau-de-bord/?campement_id={self.campement_b['id']}").status_code, 403)
+
+    def test_le_superviseur_n_a_pas_les_droits_du_big_boss(self):
+        """Structure, comptes, journal, clôture, suppression : tout cela reste réservé au Big Boss (l'API répond 403)."""
+        attendu_403 = [
+            ('post', 'plantations/', {'nom': 'X', 'superficie': 1}),
+            ('patch', f"plantations/{self.plantation['id']}/", {'nom': 'Renommée'}),
+            ('delete', f"plantations/{self.plantation['id']}/", None),
+            ('post', 'campements/', {'nom': 'X', 'plantation_id': self.plantation['id'], 'superficie': 1}),
+            ('patch', f"campements/{self.campement['id']}/", {'nom': 'Renommé'}),
+            ('delete', f"campements/{self.campement['id']}/", None),
+            ('get', 'campements/responsables/', None),
+            ('post', 'blocs/', {'nom': 'Z', 'campement_id': self.campement['id'], 'superficie': 1, 'nombre_plantes': 10}),
+            ('patch', f"blocs/{self.bloc['id']}/", {'nom': 'Renommé'}),
+            ('delete', f"blocs/{self.bloc['id']}/", None),
+            ('post', 'types-travaux/', {'libelle': 'Nouvelle activité'}),
+            ('post', 'categories-depenses/', {'libelle': 'Nouvelle catégorie'}),
+            ('delete', f"depenses/{self.depense_a['id']}/", None),
+            ('delete', f"travaux/{self.travail_a['id']}/", None),
+            ('get', 'utilisateurs/', None),
+            ('post', 'utilisateurs/', {'email': 'x@test.ci', 'role': 'big_boss', 'password': 'Motdepasse@1'}),
+            ('patch', f"utilisateurs/{self.superviseur.pk}/", {'role': 'big_boss'}),
+            ('post', f"utilisateurs/{self.admin.pk}/debloquer/", None),
+            ('get', 'journal/', None),
+            ('post', 'clotures/', {'periode': '2020-01'}),
+            ('post', 'clotures/2020-01/rouvrir/', None),
+        ]
+        for methode, url, donnees in attendu_403:
+            reponse = getattr(self.client, methode)(f'/api/v1/{url}', **({'data': donnees, 'format': 'json'} if donnees is not None else {}))
+            self.assertEqual(reponse.status_code, 403, f'{methode.upper()} {url} -> {reponse.status_code} (attendu 403)')
+        # Rien n'a changé
+        self.login(self.admin.username)
+        self.assertEqual(self.get(f"plantations/{self.plantation['id']}/")['nom'], self.plantation['nom'])
+        self.assertEqual(self.get(f"blocs/{self.bloc['id']}/")['nom'], self.bloc['nom'])
+        self.assertEqual(Utilisateur.objects.get(pk=self.superviseur.pk).role.code, 'superviseur')

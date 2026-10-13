@@ -124,7 +124,11 @@ const cliquerBouton = async (texte, { exact = false, dansDialogue = true } = {})
 };
 // Action sur la ligne de tableau qui contient un texte : bouton visible, sinon élément du menu « ⋯ »
 const actionLigne = async (texteLigne, aria) => {
-  const mode = await page.evaluate((texteLigne, aria) => {
+  // Les listes viennent du serveur (délai de recherche, réponse tardive) : la ligne peut mettre un instant à apparaître
+  let mode = null;
+  for (let essai = 0; essai < 10 && !mode; essai++) {
+    if (essai) await pause(500);
+    mode = await page.evaluate((texteLigne, aria) => {
     const lignes = [...document.querySelectorAll('table tbody tr')].filter((tr) => tr.offsetParent && tr.innerText.includes(texteLigne));
     for (const tr of lignes) {
       const b = [...tr.querySelectorAll('button')].find((x) => (x.getAttribute('aria-label') || '').startsWith(aria) || x.textContent.trim().startsWith(aria));
@@ -135,7 +139,8 @@ const actionLigne = async (texteLigne, aria) => {
       if (plus) { plus.click(); return 'menu'; }
     }
     return null;
-  }, texteLigne, aria);
+    }, texteLigne, aria);
+  }
   if (!mode) throw new Error(`Action « ${aria} » introuvable sur la ligne « ${texteLigne} »`);
   if (mode === 'menu') {
     await pause(300);
@@ -809,7 +814,8 @@ await etape('Travaux : annuler un travail terminé et payé (cascade), rétablir
   const { salaire, paiement } = await payerApi(termine, 3000);
   verifier((await api('GET', '/depenses/')).donnees.some((d) => d.origine?.reference === paiement.numero), 'Le paiement a sa dépense avant l’annulation du travail');
   await aller('/travaux');
-  // Le travail le plus récent est en tête de liste
+  // Le travail le plus récent est en tête de liste (liste chargée par le serveur : attendre son affichage)
+  await page.waitForSelector('table tbody tr button[aria-label="Plus d\'actions"]', { timeout: 10000 });
   await page.evaluate(() => document.querySelector('table tbody tr button[aria-label="Plus d\'actions"]').click());
   await pause(300);
   const menu = await page.evaluate(() => [...document.querySelectorAll('[role=menu] [role=menuitem]')].map((x) => ({ t: x.textContent.trim(), d: x.disabled })));

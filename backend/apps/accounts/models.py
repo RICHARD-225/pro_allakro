@@ -69,7 +69,11 @@ class Utilisateur(models.Model):
         """None = toute l'exploitation (Big Boss) ; sinon la liste des campements visibles (vide si aucun n'est affecté)."""
         if self.is_big_boss:
             return None
-        return [self.campement_id] if self.campement_id else []
+        # Un responsable peut gérer plusieurs campements : ceux dont sa fiche est « responsable » (actifs) et celui de son bloc
+        ids = list(self.personne.campements_responsable.filter(actif=True).order_by('nom').values_list('pk', flat=True))
+        if self.campement_id and self.campement_id not in ids:
+            ids.insert(0, self.campement_id)
+        return ids
 
 
 class JetonRevoque(models.Model):

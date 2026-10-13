@@ -93,7 +93,8 @@ class Command(BaseCommand):
                                         'bloc_id': b1.pk, 'date_embauche': '2023-01-30'})
         responsables = [Personne.objects.get(pk=comptes[-1].personne_id), moussa, aminata]
         for campement, responsable in zip(campements, responsables):
-            c(CampementSerializer, {'responsable_id': responsable.pk}, instance=campement)
+            # Jeu de départ : écrit directement (la règle « responsable = utilisateur » vaut pour la saisie par l'API)
+            Campement.objects.filter(pk=campement.pk).update(responsable_id=responsable.pk)
 
         # --- Activités (liste officielle) et catégories de dépenses ---
         installer_activites(TypeTravail)

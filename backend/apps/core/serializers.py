@@ -71,8 +71,15 @@ class CampementSerializer(serializers.ModelSerializer):
 
         if 'plantation' in attrs and (self.instance is None or self.instance.plantation_id != plantation.pk):
             v.actif(plantation, 'Cette plantation')
-        if attrs.get('responsable'):
-            v.actif(attrs['responsable'], 'Le responsable choisi')
+        responsable = attrs.get('responsable')
+        if responsable and (self.instance is None or self.instance.responsable_id != responsable.pk):
+            v.actif(responsable, 'Le responsable choisi')
+            # Seuls les utilisateurs (comptes créés par le Big Boss) peuvent être responsables d'un campement
+            compte = getattr(responsable, 'utilisateur', None)
+            if compte is None or not compte.actif or compte.is_big_boss:
+                raise serializers.ValidationError({'responsable_id': (
+                    "Le responsable doit être un utilisateur (superviseur) actif créé par le Big Boss : "
+                    "créez d'abord son compte dans Administration > Utilisateurs.")})
         try:
             v.unique_insensible(plantation.campements, 'nom', nom, self.instance,
                                 'Un campement de cette plantation porte déjà ce nom.')

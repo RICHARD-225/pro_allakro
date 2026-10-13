@@ -7,7 +7,7 @@ import { DataTable, Badge, Button, ErrorState, Modal, Input, Select } from '@/co
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSuppression } from '@/hooks/useSuppression';
-import { campementsService, plantationsService, personnesService } from '@/services';
+import { campementsService, plantationsService } from '@/services';
 import { formatNumber } from '@/utils/format';
 import { showServerErrors } from '@/utils/errors';
 import { ROLE } from '@/constants';
@@ -19,7 +19,7 @@ export default function CampementsPage() {
   const isBoss = user?.role === ROLE.BIG_BOSS;
   const [data, setData] = useState([]);
   const [plantations, setPlantations] = useState([]);
-  const [personnes, setPersonnes] = useState([]);
+  const [responsables, setResponsables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [edition, setEdition] = useState(null);
@@ -37,11 +37,11 @@ export default function CampementsPage() {
   });
 
   useEffect(() => {
-    Promise.all([campementsService.getAll(), plantationsService.getAll(), personnesService.getAll()])
+    Promise.all([campementsService.getAll(), plantationsService.getAll(), campementsService.responsables()])
       .then(([camps, plants, pers]) => {
         setData(camps);
         setPlantations(plants);
-        setPersonnes(pers);
+        setResponsables(pers);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -163,9 +163,14 @@ export default function CampementsPage() {
           />
           <Select
             label="Responsable"
-            options={personnes.filter((p) => p.actif || p.id === form.responsable_id)
-              .map((p) => ({ value: p.id, label: `${p.prenom} ${p.nom} — ${p.matricule}` }))}
-            placeholder="Rechercher une personne"
+            options={[...(form.responsable_id && !responsables.some((p) => p.id === form.responsable_id)
+              ? [{ value: form.responsable_id, label: `${data.find((c) => c.responsable_id === form.responsable_id)?.responsable_nom || 'Responsable actuel'} (sans compte utilisateur)` }] : []),
+            ...responsables.map((p) => ({
+              value: p.id,
+              label: `${p.prenom} ${p.nom} — ${p.matricule}${p.campements.length ? ` (gère : ${p.campements.join(', ')})` : ''}`,
+            }))]}
+            placeholder="Choisir un utilisateur (superviseur)"
+            hint="Un responsable peut gérer plusieurs campements."
             value={form.responsable_id}
             onChange={(e) => setForm({ ...form, responsable_id: e.target.value })}
             error={formErrors.responsable_id}

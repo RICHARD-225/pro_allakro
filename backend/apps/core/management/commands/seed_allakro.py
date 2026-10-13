@@ -126,7 +126,8 @@ class Command(BaseCommand):
                                               'bloc_id': ids['B1'], 'date_embauche': '2023-01-01'}).pk
 
         for campement, responsable in (('C1', 'P1'), ('C2', 'P9'), ('C3', 'P13'), ('C4', 'P17'), ('C5', 'P9')):
-            c(CampementSerializer, {'responsable_id': ids[responsable]}, instance=Campement.objects.get(pk=ids[campement]))
+            # Données de démonstration : écrites directement (la règle « responsable = utilisateur » vaut pour la saisie par l'API)
+            Campement.objects.filter(pk=ids[campement]).update(responsable_id=ids[responsable])
 
         # --- Activités (liste officielle) ---
         installer_activites(TypeTravail)

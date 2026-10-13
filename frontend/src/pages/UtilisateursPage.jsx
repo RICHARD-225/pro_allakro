@@ -276,7 +276,7 @@ export default function UtilisateursPage() {
             type="password"
             autoComplete="new-password"
             hint={enModification ? 'Laissez vide pour garder le mot de passe actuel.' : undefined}
-            placeholder="8 caractères minimum, pas uniquement des chiffres"
+            placeholder="10 caractères minimum, avec majuscule, minuscule et chiffre"
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             error={formErrors.password}

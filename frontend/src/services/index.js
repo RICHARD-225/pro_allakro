@@ -20,7 +20,11 @@ function resource(path, { code = false } = {}) {
 
 // Exploitation
 export const plantationsService = resource('plantations', { code: true });
-export const campementsService = resource('campements', { code: true });
+export const campementsService = {
+  ...resource('campements', { code: true }),
+  // Superviseurs actifs proposés comme responsables (avec leurs campements)
+  responsables: () => api.get('/campements/responsables/'),
+};
 export const blocsService = resource('blocs', { code: true });
 // Liste d'unités réutilisable (travaux, achats) ; unité par défaut : ha
 export const unitesService = { getAll: () => api.get('/unites/') };

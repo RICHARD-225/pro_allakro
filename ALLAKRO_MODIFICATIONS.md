@@ -489,3 +489,28 @@ Demande : régler tous les problèmes de sécurité de l'audit et les améliorat
 - **145 tests backend sur 145 réussis** (115 + 15 réinitialisation, notifications et clôture + 12 pagination + 2 cache + 1 filtre des entrées) ; `check` et `makemigrations --check` : rien à signaler ; ESLint : 0 problème.
 - Test de bout en bout navigateur : **197 vérifications sur 197** avec la pagination serveur (après attente du délai de recherche dans le script).
 - Migrations `accounts.0005`, `core.0008`, `finances.0010` appliquées sur `allakro_db` **après sauvegarde** (`alakro_sauvegardes/avant_migrations`) ; `verifier_coherence` : 93 contrôles, aucune incohérence.
+
+---
+
+## 12. Responsables de campements, mot de passe visible, droits du superviseur (13 octobre 2026)
+
+### 12.1 Responsable d'un campement = un utilisateur
+- Le formulaire de campement ne propose que les **utilisateurs superviseurs actifs** (comptes créés par le Big Boss ; seul lui peut créer un compte). Route `GET /campements/responsables/` (Big Boss). Le Big Boss lui-même et les personnes sans compte ne sont plus proposés.
+- **L'API le refuse aussi** (400) : une personne sans compte, un compte désactivé ou le Big Boss ne peut pas être choisi comme responsable. La règle ne s'applique qu'au **changement** de responsable : un campement existant dont le responsable n'a pas de compte reste affiché (« sans compte utilisateur ») et modifiable sans perdre ce responsable.
+- Les données de démonstration (`seed_allakro`) et `reinitialiser_base` écrivent leurs responsables directement en base (sans cette règle).
+
+### 12.2 Un responsable gère plusieurs campements
+- Le modèle le permettait déjà (un responsable peut figurer sur plusieurs campements) ; **le périmètre du superviseur le reflète maintenant** : son campement d'affectation **plus** tous les campements actifs dont il est responsable. Listes, détails, écritures, tableau de bord et rapports s'appliquent à l'ensemble ; il peut choisir l'un de **ses** campements dans les filtres (un autre campement : 403).
+- **Réserve :** le tableau de bord et les rapports calculent pour **un seul campement à la fois** ; sans choix, c'est le premier (celui de son bloc). Un total « tous mes campements » n'existe pas (non fait).
+
+### 12.3 Voir le mot de passe à la saisie
+- Tous les champs « mot de passe » (création de compte, changement de mot de passe, réinitialisation) ont un bouton œil (afficher / masquer). Les indications disaient « 8 caractères » alors que la règle réelle est **10 caractères avec majuscule, minuscule et chiffre** : corrigé.
+
+### 12.4 Droits du superviseur (vérification)
+- Réservé au Big Boss, **testé** (le superviseur reçoit 403) : créer / modifier / supprimer plantations, campements et **blocs** ; activités et catégories de dépenses ; gérer les comptes, débloquer un compte ; journal ; clôturer / rouvrir un mois ; **toute suppression**.
+- **Corrigé dans cette série :** les **blocs** pouvaient encore être créés et modifiés par un superviseur (API et bouton visibles) : désormais Big Boss seulement.
+- **Reste permis au superviseur (choix à confirmer) :** saisir et modifier travaux, rémunérations manuelles, paiements, dépenses, personnes, produits et mouvements de stock, achats aux particuliers ; annuler / réactiver un paiement et annuler / rétablir un travail (décision du 11 octobre). Dites-moi si l'un de ces droits doit passer au Big Boss seul.
+
+### 12.5 Vérifications
+- Tests : **148 sur 148** (3 nouveaux : responsables proposés, responsable de plusieurs campements, liste exhaustive de 21 actions refusées au superviseur).
+- Navigateur (`outils_tests/verif_roles.mjs`, 10 vérifications) : liste des responsables, bouton œil, absence des boutons de structure pour le superviseur.
