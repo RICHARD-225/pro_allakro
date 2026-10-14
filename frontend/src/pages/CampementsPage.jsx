@@ -37,7 +37,9 @@ export default function CampementsPage() {
   });
 
   useEffect(() => {
-    Promise.all([campementsService.getAll(), plantationsService.getAll(), campementsService.responsables()])
+    // La liste des responsables est réservée au Big Boss : un superviseur consulte la page sans l'appeler (sinon 403 et page en erreur)
+    Promise.all([campementsService.getAll(), plantationsService.getAll(),
+      isBoss ? campementsService.responsables().catch(() => []) : Promise.resolve([])])
       .then(([camps, plants, pers]) => {
         setData(camps);
         setPlantations(plants);
@@ -45,7 +47,7 @@ export default function CampementsPage() {
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  }, [isBoss]);
 
   const ouvrir = (campement = null) => {
     setForm(campement

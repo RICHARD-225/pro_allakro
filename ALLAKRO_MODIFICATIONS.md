@@ -534,6 +534,12 @@ Demande : régler tous les problèmes de sécurité de l'audit et les améliorat
 - Tests : **155 sur 155** (7 nouveaux : lecture de `DATABASE_URL`, premier démarrage, idempotence, mot de passe refusé, rôles sans variables).
 - Simulation locale du démarrage Render : **13 vérifications sur 13**, `check --deploy` sans alerte avec les réglages de production ; `allakro_db` non touchée (`verifier_coherence` : 93 contrôles, aucune incohérence).
 
+### 13.2 bis Premier déploiement réel (14 octobre 2026) : ce qui s'est passé
+- **`render.yaml` refusé une première fois** : un site statique n'accepte pas de ligne `region` (retirée).
+- **API en ligne sur Render** : migrations appliquées sur Neon, deux comptes Big Boss créés, sonde de santé 200 (journaux fournis par l'utilisateur).
+- **Défaut trouvé à l'usage et corrigé :** la page **Campements** ne s'affichait pas pour un **superviseur** : elle appelait la liste des responsables (réservée au Big Boss), reçait un 403 et tombait en erreur. Introduit par la série du 13 octobre ; mon test navigateur vérifiait l'absence du bouton « Nouveau campement » mais **pas que la liste s'affichait**. Corrigé (la liste n'est demandée qu'au Big Boss) et le test vérifie désormais l'affichage des listes ; **balayage de toutes les pages avec les deux rôles** (`balayage_pages.mjs`) : aucun refus inattendu.
+- **Garde de route :** un superviseur qui tape l'adresse d'Utilisateurs ou du Journal est renvoyé au tableau de bord (au lieu d'une page d'erreur).
+
 ### 13.3 NON vérifié (à ne pas annoncer comme fait)
 - **Aucun déploiement réel n'a été fait** : ni Render ni Neon n'ont été utilisés. Je n'ai pas accès à leurs tableaux de bord.
 - La **version de Python (3.14.3) sur Render** n'est pas confirmée ; repli prévu en 3.13.

@@ -5,6 +5,7 @@ import { ToastProvider } from '@/contexts/ToastContext';
 import { FilterProvider } from '@/contexts/FilterContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import ProtectedRoute from './ProtectedRoute';
+import ReserveBigBoss from './ReserveBigBoss';
 import MainLayout from '@/components/layouts/MainLayout';
 import AuthLayout from '@/components/layouts/AuthLayout';
 import { SkeletonCard } from '@/components/ui/Skeleton';
@@ -86,8 +87,8 @@ export default function AppRoutes() {
               <Route path="/particuliers" element={<Suspense fallback={<PageFallback />}><ParticuliersPage /></Suspense>} />
               <Route path="/bilan" element={<Suspense fallback={<PageFallback />}><BilanPage /></Suspense>} />
               <Route path="/rapports" element={<Suspense fallback={<PageFallback />}><RapportsPage /></Suspense>} />
-              <Route path="/utilisateurs" element={<Suspense fallback={<PageFallback />}><UtilisateursPage /></Suspense>} />
-              <Route path="/journal" element={<Suspense fallback={<PageFallback />}><JournalPage /></Suspense>} />
+              <Route path="/utilisateurs" element={<ReserveBigBoss><Suspense fallback={<PageFallback />}><UtilisateursPage /></Suspense></ReserveBigBoss>} />
+              <Route path="/journal" element={<ReserveBigBoss><Suspense fallback={<PageFallback />}><JournalPage /></Suspense></ReserveBigBoss>} />
               <Route path="/parametres" element={<Suspense fallback={<PageFallback />}><ParametresPage /></Suspense>} />
               <Route path="/types-travaux" element={<Suspense fallback={<PageFallback />}><TypesTravauxPage /></Suspense>} />
               <Route path="/categories" element={<Suspense fallback={<PageFallback />}><CategoriesDepensesPage /></Suspense>} />

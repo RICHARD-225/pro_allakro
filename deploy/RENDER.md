@@ -9,8 +9,8 @@
 
 ## Étape 1 — La base chez Neon (5 minutes)
 1. Sur https://console.neon.tech : **Create project**.
-2. Nom : `allakro`. **Région : AWS Europe (Frankfurt)** (la plus proche de Render Frankfurt). Version de PostgreSQL : la plus récente proposée.
-3. Une fois créé, cliquez sur **Connect** et copiez la **Connection string** (elle ressemble à `postgresql://utilisateur:mot_de_passe@ep-xxxx.eu-central-1.aws.neon.tech/neondb?sslmode=require`). Que l'option « pooled » soit cochée ou non, les deux fonctionnent.
+2. Nom : `allakro`. **Région : AWS Europe (Frankfurt)** (la plus proche de Render Frankfurt). Version de PostgreSQL : la plus récente proposée. 
+3. Une fois créé, cliquez sur **Connect** et    copiez la **Connection string** (elle ressemble à `postgresql://utilisateur:mot_de_passe@ep-xxxx.eu-central-1.aws.neon.tech/neondb?sslmode=require`). Que l'option « pooled » soit cochée ou non, les deux fonctionnent.
 4. Gardez cette adresse : c'est un **secret** (elle contient le mot de passe de la base).
 
 ## Étape 2 — Vérifier les noms dans `render.yaml`

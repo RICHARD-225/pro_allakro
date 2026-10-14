@@ -10,6 +10,9 @@ Scripts pour tester l'application **dans un vrai navigateur** (Edge sans fenêtr
 | `captures_typo.mjs` | Captures de toutes les pages et des principaux formulaires, bureau et mobile. |
 | `pentest.py` | Test d'intrusion **automatisé interne** (77 contrôles : authentification, injections SQL, XSS, CSRF, accès entre rôles, limites de débit, en-têtes, chemins, entrées malformées) contre une instance en mode production sur le port 8002. Ce n'est **pas** un test indépendant : il ne remplace pas un audit par un tiers. |
 | `captures_comparaison.mjs` + `comparer_captures.py` | Captures de 18 pages (bureau/mobile, clair/sombre) puis comparaison pixel à pixel de deux versions de l'interface (ex. avant/après une mise à jour de Tailwind). |
+| `verif_roles.mjs` | Vérifie dans le navigateur : responsables de campement proposés, bouton « voir le mot de passe », droits du superviseur (aucun bouton de structure, **et les listes s'affichent bien**). |
+| `balayage_pages.mjs` | Ouvre toutes les pages avec un Big Boss puis un superviseur et signale toute réponse d'erreur de l'API (un superviseur ne doit déclencher aucun 403 sur ses pages) ou toute page « erreur ». |
+| `simuler_render.py` | Simule en local le démarrage de l'API sur Render (base vide, `DATABASE_URL`, migrations, comptes Big Boss, connexion). |
 | `lancer_serveurs_test.ps1` / `arreter_serveurs_test.ps1` | Démarrent / arrêtent les serveurs de test (Django 8001, interface 5180, Edge 9333). |
 | `pg_outils.py` | Sauvegarde `pg_dump`, copie, création et suppression d'une base PostgreSQL (sans afficher les identifiants). |
 

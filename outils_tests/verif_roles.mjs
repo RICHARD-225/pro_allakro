@@ -82,7 +82,17 @@ const modifs = await page.evaluate(() => [...document.querySelectorAll('button')
 verifier(modifs === 0, 'Superviseur : pas de bouton Modifier sur les blocs', String(modifs));
 await page.screenshot({ path: join(SORTIE, '3_blocs_superviseur.png') });
 await page.goto(`${BASE}/campements`, { waitUntil: 'networkidle0' });
+await pause(500);
 verifier(!/Nouveau campement/.test(await texte()), 'Superviseur : pas de bouton « Nouveau campement »');
+const lignesCampements = await page.evaluate(() => document.querySelectorAll('table tbody tr').length);
+verifier(lignesCampements > 0 && !/Impossible de charger|Une erreur/i.test(await texte()), 'Superviseur : la liste des campements s’affiche', `${lignesCampements} ligne(s)`);
+// Les autres pages de structure en lecture seule doivent aussi s'afficher
+for (const chemin of ['plantations', 'blocs']) {
+  await page.goto(`${BASE}/${chemin}`, { waitUntil: 'networkidle0' });
+  await pause(500);
+  const n = await page.evaluate(() => document.querySelectorAll('table tbody tr').length);
+  verifier(n > 0 && !/Impossible de charger|Une erreur/i.test(await texte()), `Superviseur : la liste « ${chemin} » s’affiche`, `${n} ligne(s)`);
+}
 await page.goto(`${BASE}/utilisateurs`, { waitUntil: 'networkidle0' });
 verifier(!/Nouvel utilisateur/.test(await texte()), 'Superviseur : pas d’accès à la gestion des utilisateurs');
 
