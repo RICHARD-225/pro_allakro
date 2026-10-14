@@ -150,6 +150,7 @@ index.css              classes de composants, thème sombre, styles du reçu et 
 - **Sauvegardes** : `deploy/sauvegarde_postgres.py --chiffrer --copie <dossier>` (clé `SAUVEGARDE_CLE`, à conserver aussi hors de la machine) ; tâche planifiée quotidienne vers `C:\Users\HP\OneDrive\Sauvegardes ALLAKRO`.
 - **Test d'intrusion interne** : `outils_tests/pentest.py` (instance en mode production sur le port 8002) ; ce n'est pas un test externe indépendant.
 - **Responsable de campement (13 oct. 2026)** : toujours un utilisateur superviseur actif (`CampementSerializer`, route `campements/responsables/`) ; un responsable peut gérer plusieurs campements et `Utilisateur.campements_autorises()` en tient compte (campement du bloc + campements dont il est responsable). Les blocs sont Big Boss seulement en écriture. Champs mot de passe : bouton œil dans `components/ui/Input.jsx`. Vérification navigateur : `outils_tests/verif_roles.mjs`.
+- **Déploiement Render + Neon (14 oct. 2026, préparé, NON déployé)** : `render.yaml`, `deploy/RENDER.md`, `DATABASE_URL` (`apps/core/config_db.py`), `manage.py initialiser_production` (rôles + 2 comptes Big Boss depuis `BIG_BOSS_n_*`), lien mot de passe oublié masqué par `VITE_MOT_DE_PASSE_OUBLIE=false`. Base vide, gratuit, test client. Simulation locale : `outils_tests/simuler_render.py`.
 - **Non fait** (à ne pas annoncer comme fait) : double authentification (reportée par l'utilisateur), test d'intrusion externe, envoi réel de courrier, vérification de la synchronisation OneDrive, CI GitHub jamais exécutée, mise en ligne.
 
 ---
@@ -173,7 +174,7 @@ index.css              classes de composants, thème sombre, styles du reçu et 
 
 ## 6. Comment vérifier un changement (procédure suivie)
 
-1. `manage.py check` et `makemigrations --check --dry-run` ; `manage.py test apps --parallel 1` (**148 tests**, tous verts à la dernière vérification).
+1. `manage.py check` et `makemigrations --check --dry-run` ; `manage.py test apps --parallel 1` (**155 tests**, tous verts à la dernière vérification).
 2. `npm run build` dans `frontend\` **et** `npm run lint` (ESLint ; le build Vite **ne détecte pas** un composant ou une constante non importés : l'erreur n'apparaît qu'à l'exécution).
 3. Base de démonstration séparée + serveurs 8001 / 5180 + Edge 9333, puis `node outils_tests\e2e_complet.mjs` (**197 vérifications**, tous verts) — marche à suivre dans `outils_tests\README.md`. Recharger la base (`seed_allakro --reset` avec `DB_NAME=allakro_demo`) **avant chaque passage**.
 4. Captures (`captures_modif.mjs`, `captures_typo.mjs`) relues à 1 440 px et 390 px ; PDF d'impression du reçu (média « print ») = une page A4.

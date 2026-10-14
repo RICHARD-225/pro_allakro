@@ -13,6 +13,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
+# Render fournit le nom d'hôte public du service : on l'ajoute pour éviter une erreur de saisie (aucun effet ailleurs)
+_hote_render = config('RENDER_EXTERNAL_HOSTNAME', default='')
+if _hote_render and _hote_render not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS = [*ALLOWED_HOSTS, _hote_render]
 
 # Application definition
 INSTALLED_APPS = [
@@ -70,17 +74,23 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'PRoAll.wsgi.application'
 
-# Database
-DATABASES = {
-     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": config('DB_NAME'),
-        "USER": config('DB_USER'),
-        "PASSWORD": config('DB_PASSWORD', default=''),
-        "HOST": config('DB_HOST', default='localhost'),
-        "PORT": config('DB_PORT', default='5432'),
+# Database : une adresse unique `DATABASE_URL` (Render, Neon) l'emporte ; sinon les variables DB_* (développement, serveur dédié)
+_DATABASE_URL = config('DATABASE_URL', default='')
+if _DATABASE_URL:
+    from apps.core.config_db import base_depuis_url  # noqa: E402
+
+    DATABASES = {"default": base_depuis_url(_DATABASE_URL)}
+else:
+    DATABASES = {
+         "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": config('DB_NAME'),
+            "USER": config('DB_USER'),
+            "PASSWORD": config('DB_PASSWORD', default=''),
+            "HOST": config('DB_HOST', default='localhost'),
+            "PORT": config('DB_PORT', default='5432'),
+        }
     }
-}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

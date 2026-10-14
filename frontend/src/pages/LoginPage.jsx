@@ -103,9 +103,14 @@ export default function LoginPage() {
             />
             <span className="text-sm text-ink-600">Se souvenir de moi</span>
           </label>
-          <Link to="/mot-de-passe-oublie" className="text-xs text-forest-600 hover:text-forest-700 font-medium">
-            Mot de passe oublié ?
-          </Link>
+          {/* Sans serveur de courrier (VITE_MOT_DE_PASSE_OUBLIE=false à la construction), le Big Boss réinitialise les mots de passe */}
+          {import.meta.env.VITE_MOT_DE_PASSE_OUBLIE === 'false' ? (
+            <span className="text-xs text-ink-500">Mot de passe perdu ? Contactez votre administrateur.</span>
+          ) : (
+            <Link to="/mot-de-passe-oublie" className="text-xs text-forest-600 hover:text-forest-700 font-medium">
+              Mot de passe oublié ?
+            </Link>
+          )}
         </div>
 
         <Button type="submit" className="w-full" size="lg" loading={loading}>

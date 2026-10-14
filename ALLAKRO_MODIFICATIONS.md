@@ -514,3 +514,29 @@ Demande : régler tous les problèmes de sécurité de l'audit et les améliorat
 ### 12.5 Vérifications
 - Tests : **148 sur 148** (3 nouveaux : responsables proposés, responsable de plusieurs campements, liste exhaustive de 21 actions refusées au superviseur).
 - Navigateur (`outils_tests/verif_roles.mjs`, 10 vérifications) : liste des responsables, bouton œil, absence des boutons de structure pour le superviseur.
+
+---
+
+## 13. Préparation du déploiement gratuit sur Render + Neon (14 octobre 2026)
+
+> Décisions de l'utilisateur : hébergement **gratuit** pour un test client à distance ; **base vide** (aucune donnée actuelle envoyée) ; **mot de passe oublié contourné** (le Big Boss réinitialise à la main) ; **un compte Big Boss séparé pour le client**.
+
+### 13.1 Ce qui a été ajouté
+- **`render.yaml`** (racine) : API Django (gunicorn, un processus, région Frankfurt) et interface (site statique) avec redirection `/api/*` vers l'API (même adresse pour l'interface et l'API : les cookies de session et le CSRF fonctionnent sans réglage croisé), en-têtes de sécurité, clés secrètes générées par Render.
+- **`DATABASE_URL`** : lue en priorité si elle existe (`apps/core/config_db.py`) ; sinon les variables `DB_*` comme avant (le développement ne change pas). Gère les caractères spéciaux du mot de passe, `sslmode`, et le répartiteur de connexions de Neon (`-pooler`).
+- **`manage.py initialiser_production`** : à chaque démarrage, crée les rôles (Big Boss, Superviseur) et jusqu'à **deux comptes Big Boss** à partir de variables d'environnement (`BIG_BOSS_1_*`, `BIG_BOSS_2_*`) ; **ne modifie jamais un compte existant**, n'affiche jamais un mot de passe, refuse un mot de passe qui ne respecte pas la règle. Indispensable car l'offre gratuite de Render n'a pas de terminal.
+- **Lien « Mot de passe oublié ? »** remplacé par « Contactez votre administrateur » quand l'interface est construite avec `VITE_MOT_DE_PASSE_OUBLIE=false` (c'est le cas dans `render.yaml`). Sans cette variable, le comportement est inchangé.
+- `RENDER_EXTERNAL_HOSTNAME` (fourni par Render) est ajouté automatiquement aux hôtes autorisés.
+- **Guide pas à pas :** `deploy/RENDER.md` (Neon, Render, comptes, réveil de l'API, dépannage, limites).
+- **Outil de simulation :** `outils_tests/simuler_render.py` (base vide, `DATABASE_URL`, migrations, deux démarrages, `check --deploy`, connexion des deux comptes, sonde de santé).
+
+### 13.2 Vérifié
+- Tests : **155 sur 155** (7 nouveaux : lecture de `DATABASE_URL`, premier démarrage, idempotence, mot de passe refusé, rôles sans variables).
+- Simulation locale du démarrage Render : **13 vérifications sur 13**, `check --deploy` sans alerte avec les réglages de production ; `allakro_db` non touchée (`verifier_coherence` : 93 contrôles, aucune incohérence).
+
+### 13.3 NON vérifié (à ne pas annoncer comme fait)
+- **Aucun déploiement réel n'a été fait** : ni Render ni Neon n'ont été utilisés. Je n'ai pas accès à leurs tableaux de bord.
+- La **version de Python (3.14.3) sur Render** n'est pas confirmée ; repli prévu en 3.13.
+- La **redirection `/api/*` du site statique** (cookies, en-tête `Host`, `Origin`) n'est pas testée sur Render ; son comportement réel peut obliger à un ajustement.
+- **L'adresse IP vue par l'API** derrière Render : `TRUSTED_PROXY_COUNT` reste à 0 ; les limites par adresse IP s'appliqueront peut-être à tous les visiteurs ensemble.
+- L'envoi de courrier n'est pas configuré (choix). Aucune sauvegarde automatique ; test d'intrusion externe non fait.
