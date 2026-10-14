@@ -68,7 +68,6 @@ services:
   - type: web
     name: allakro-richard225-web
     runtime: static
-    region: frankfurt
     rootDir: frontend
     buildCommand: npm ci --legacy-peer-deps && npm run build
     staticPublishPath: dist
