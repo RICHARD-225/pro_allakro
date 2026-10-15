@@ -38,11 +38,10 @@ class Campement(AutoCodeMixin, models.Model):
     code_prefix = "CMP-"
 
     plantation = models.ForeignKey(Plantation, on_delete=models.PROTECT, related_name="campements")
+    # Un campement a toujours un responsable (superviseur ou Big Boss) : il gère tous les blocs du campement
     responsable = models.ForeignKey(
         'Personne',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        on_delete=models.PROTECT,
         related_name='campements_responsable',
         verbose_name='Responsable'
     )

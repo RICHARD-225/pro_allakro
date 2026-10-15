@@ -59,21 +59,14 @@ class Utilisateur(models.Model):
     def nom_complet(self):
         return self.personne.nom_complet
 
-    @property
-    def campement_id(self):
-        """Campement du compte (celui du bloc de sa fiche du personnel) : le périmètre d'un superviseur."""
-        personne = self.personne
-        return personne.bloc.campement_id if personne.bloc_id else personne.campement_id
-
     def campements_autorises(self):
-        """None = toute l'exploitation (Big Boss) ; sinon la liste des campements visibles (vide si aucun n'est affecté)."""
+        """
+        None = toute l'exploitation (Big Boss) ; sinon la liste des campements dont le compte est responsable (vide si aucun).
+        Un responsable gère tous les blocs de ses campements et peut en gérer plusieurs.
+        """
         if self.is_big_boss:
             return None
-        # Un responsable peut gérer plusieurs campements : ceux dont sa fiche est « responsable » (actifs) et celui de son bloc
-        ids = list(self.personne.campements_responsable.filter(actif=True).order_by('nom').values_list('pk', flat=True))
-        if self.campement_id and self.campement_id not in ids:
-            ids.insert(0, self.campement_id)
-        return ids
+        return list(self.personne.campements_responsable.order_by('nom').values_list('pk', flat=True))
 
 
 class JetonRevoque(models.Model):

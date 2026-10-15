@@ -243,7 +243,8 @@ class PerimetreParCampementTests(ApiTestCase):
     def setUp(self):
         super().setUp()
         self.referentiel()  # campement A (celui du superviseur)
-        self.campement_b = self.post('campements/', {'nom': 'Camp B', 'plantation_id': self.plantation['id'], 'superficie': 40})
+        self.campement_b = self.post('campements/', {'nom': 'Camp B', 'plantation_id': self.plantation['id'], 'superficie': 40,
+                                                          'responsable_id': self.admin.personne_id})
         self.bloc_b = self.post('blocs/', {'nom': 'B1', 'campement_id': self.campement_b['id'], 'superficie': 10, 'nombre_plantes': 1000})
         self.personne_b = self.post('personnes/', {'nom': 'Etranger', 'prenom': 'B', 'telephone': '07 11 11 11 11',
                                                    'fonction_id': self.fonction.pk, 'bloc_id': self.bloc_b['id']})

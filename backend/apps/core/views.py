@@ -40,14 +40,15 @@ class CampementViewSet(CodePreviewMixin, BaseViewSet):
 
     @action(detail=False, methods=['get'])
     def responsables(self, request):
-        """Personnes proposées comme responsables : les superviseurs actifs (comptes créés par le Big Boss), avec leurs campements."""
+        """Personnes proposées comme responsables : superviseurs et Big Boss actifs, avec les campements qu'ils gèrent déjà."""
         from apps.accounts.models import RoleUtilisateur, Utilisateur
-        comptes = Utilisateur.objects.filter(actif=True, role__code=RoleUtilisateur.SUPERVISEUR).select_related('personne')
+        comptes = Utilisateur.objects.filter(actif=True, role__code__in=(RoleUtilisateur.SUPERVISEUR, RoleUtilisateur.BIG_BOSS))
         donnees = []
-        for compte in comptes.order_by('personne__nom', 'personne__prenom'):
+        for compte in comptes.select_related('personne', 'role').order_by('personne__nom', 'personne__prenom'):
             p = compte.personne
-            campements = list(p.campements_responsable.filter(actif=True).order_by('nom').values_list('nom', flat=True))
-            donnees.append({'id': p.pk, 'prenom': p.prenom, 'nom': p.nom, 'matricule': p.matricule, 'campements': campements})
+            campements = list(p.campements_responsable.order_by('nom').values_list('nom', flat=True))
+            donnees.append({'id': p.pk, 'prenom': p.prenom, 'nom': p.nom, 'matricule': p.matricule, 'role': compte.role.code,
+                            'role_libelle': compte.role.libelle, 'campements': campements})
         return Response(donnees)
 
 
@@ -60,8 +61,8 @@ class BlocViewSet(CodePreviewMixin, BaseViewSet):
     filter_map = {'campement_id': 'campement_id'}
     ordre_defaut = ('-date_creation', '-id')
     perimetre_lookup = 'campement_id'
-    # Les blocs font partie de la structure de l'exploitation (comme plantations et campements) : Big Boss seulement
-    big_boss_actions = ('create', 'update', 'partial_update', 'destroy')
+    # Un responsable crée et modifie les blocs de SES campements (contrôlé par le périmètre) ; la suppression reste au Big Boss
+    big_boss_actions = ('destroy',)
 
     def describe(self, instance):
         return f"{instance.code} — {instance.nom} ({instance.nombre_plantes} plantes)"

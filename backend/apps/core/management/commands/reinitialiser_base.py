@@ -57,13 +57,12 @@ class Command(BaseCommand):
 
     def vider(self, ids_comptes):
         self.stdout.write('Suppression des données de test (les comptes sont conservés)…')
-        Personne.objects.filter(pk__in=ids_comptes).update(bloc=None, campement=None)
-        Campement.objects.update(responsable=None)
+        Personne.objects.update(bloc=None, campement=None)  # casse le cycle personne <-> campement (responsable) avant les suppressions
         for model in A_VIDER:
             model.objects.all().delete()
-        Personne.objects.exclude(pk__in=ids_comptes).delete()
         Bloc.objects.all().delete()
         Campement.objects.all().delete()
+        Personne.objects.exclude(pk__in=ids_comptes).delete()
         Plantation.objects.all().delete()
 
     def charger(self, comptes):
@@ -74,7 +73,9 @@ class Command(BaseCommand):
         # --- Exploitation : 3 plantations, 3 campements, 3 blocs (un par campement) ---
         plantations = [c(PlantationSerializer, {'nom': nom, 'localisation': "Côte d'Ivoire", 'superficie': superficie})
                        for nom, superficie in (('ALLAKRO Nord', 1250), ('ALLAKRO Centre', 750), ('ALLAKRO Sud', 980))]
-        campements = [c(CampementSerializer, {'nom': nom, 'plantation_id': plantation.pk, 'superficie': superficie})
+        # Un campement a toujours un responsable : un compte existant (le premier) au départ, réparti ensuite entre les comptes
+        premier = comptes[0].personne
+        campements = [c(CampementSerializer, {'nom': nom, 'plantation_id': plantation.pk, 'superficie': superficie, 'responsable_id': premier.pk})
                       for (nom, superficie), plantation in zip((('Campement Nord', 450), ('Campement Centre', 320), ('Campement Sud', 380)), plantations)]
         # Densité : environ 143 plants à l'hectare (palmier) ou 550 (hévéa)
         blocs = [c(BlocSerializer, {'nom': nom, 'campement_id': campement.pk, 'superficie': superficie, 'nombre_plantes': superficie * densite})
@@ -91,10 +92,9 @@ class Command(BaseCommand):
                                          'bloc_id': c1.pk, 'date_embauche': '2023-02-15'})
         moussa = c(PersonneSerializer, {'nom': 'Traoré', 'prenom': 'Moussa', 'telephone': '07 09 01 23 45', 'fonction_libelle': 'Saigneur',
                                         'bloc_id': b1.pk, 'date_embauche': '2023-01-30'})
-        responsables = [Personne.objects.get(pk=comptes[-1].personne_id), moussa, aminata]
-        for campement, responsable in zip(campements, responsables):
-            # Jeu de départ : écrit directement (la règle « responsable = utilisateur » vaut pour la saisie par l'API)
-            Campement.objects.filter(pk=campement.pk).update(responsable_id=responsable.pk)
+        # Les responsables sont des comptes (superviseur ou Big Boss) : répartis entre les comptes existants
+        for i, campement in enumerate(campements):
+            Campement.objects.filter(pk=campement.pk).update(responsable_id=comptes[(len(comptes) - 1 - i) % len(comptes)].personne_id)
 
         # --- Activités (liste officielle) et catégories de dépenses ---
         installer_activites(TypeTravail)

@@ -53,7 +53,8 @@ class PaginationDepensesTests(ApiTestCase):
         self.assertEqual(self.client.get('/api/v1/depenses/?q=%27%20OR%201%3D1%3B--').status_code, 200)  # texte inerte, aucune injection
 
     def test_le_perimetre_du_superviseur_s_applique_aux_pages_et_aux_totaux(self):
-        campement_b = self.post('campements/', {'nom': 'Camp B', 'plantation_id': self.plantation['id'], 'superficie': 10})
+        campement_b = self.post('campements/', {'nom': 'Camp B', 'plantation_id': self.plantation['id'], 'superficie': 10,
+                                                                'responsable_id': self.admin.personne_id})
         bloc_b = self.post('blocs/', {'nom': 'B1', 'campement_id': campement_b['id'], 'superficie': 5, 'nombre_plantes': 10})
         self.post('depenses/', {'designation': 'Ailleurs', 'categorie_id': self.carburant['id'], 'bloc_id': bloc_b['id'], 'date': HIER, 'montant_total': 777})
         self.assertEqual(self.get('depenses/?page=1')['count'], 31)

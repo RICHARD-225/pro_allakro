@@ -14,7 +14,8 @@ class ExploitationTests(ApiTestCase):
 
     def test_superficies_coherentes(self):
         self.referentiel()
-        errors = self.post('campements/', {'nom': 'Camp B', 'plantation_id': self.plantation['id'], 'superficie': 50}, status=400)
+        errors = self.post('campements/', {'nom': 'Camp B', 'plantation_id': self.plantation['id'], 'superficie': 50,
+                                                       'responsable_id': self.admin.personne_id}, status=400)
         self.assertIn('superficie', errors)
         errors = self.post('blocs/', {'nom': 'A3', 'campement_id': self.campement['id'], 'superficie': 30,
                                       'nombre_plantes': 10}, status=400)

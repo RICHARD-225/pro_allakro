@@ -17,6 +17,7 @@ from apps.accounts.models import Journal, RoleUtilisateur, TentativeConnexion, U
 from apps.accounts.serializers import UtilisateurSerializer
 from apps.achats.models import AchatParticulier, PaiementAchat, Particulier
 from apps.achats.serializers import AchatParticulierSerializer
+from apps.core import services
 from apps.core.models import (
     AffectationEquipeBloc, Bloc, Campement, Equipe, Fonction, MembreEquipe, Personne, PersonneFonction, Plantation,
 )
@@ -78,8 +79,12 @@ class Command(BaseCommand):
         campements = (('C1', 'Campement Nord', 'P1', 450), ('C2', 'Campement Sud', 'P2', 380),
                       ('C3', 'Campement Central', 'P3', 320), ('C4', 'Campement Est', 'P1', 280),
                       ('C5', 'Campement Ouest', 'P2', 220))
+        # Un campement a toujours un responsable : le Big Boss (compte créé plus bas) tient ce rôle en attendant ; Jean Kouassi
+        # (superviseur) prend ensuite « Campement Nord ». Écriture directe : les comptes n'existent pas encore.
+        admin = Personne.objects.create(nom='ALLAKRO', prenom='Admin', date_embauche='2023-01-01')
+        ids['ADMIN'] = admin.pk
         for key, nom, plantation, superficie in campements:
-            ids[key] = c(CampementSerializer, {'nom': nom, 'plantation_id': ids[plantation], 'superficie': superficie}).pk
+            ids[key] = Campement.objects.create(nom=nom, plantation_id=ids[plantation], superficie=superficie, responsable=admin).pk
         # Palmier à huile : environ 143 plants par hectare ; hévéa : environ 550
         blocs = (('B1', 'Bloc A1', 'C1', 45, 143), ('B2', 'Bloc A2', 'C1', 38, 143), ('B3', 'Bloc A3', 'C1', 52, 143),
                  ('B4', 'Bloc B1', 'C2', 41, 550), ('B5', 'Bloc B2', 'C2', 36, 550), ('B6', 'Bloc C1', 'C3', 48, 550),
@@ -122,12 +127,11 @@ class Command(BaseCommand):
                 'nom': nom, 'prenom': prenom, 'telephone': tel, 'fonction_id': ids[fonction],
                 'bloc_id': ids[bloc], 'date_embauche': embauche,
             }).pk
-        ids['ADMIN'] = c(PersonneSerializer, {'nom': 'ALLAKRO', 'prenom': 'Admin', 'fonction_id': ids['F_DI'],
-                                              'bloc_id': ids['B1'], 'date_embauche': '2023-01-01'}).pk
-
-        for campement, responsable in (('C1', 'P1'), ('C2', 'P9'), ('C3', 'P13'), ('C4', 'P17'), ('C5', 'P9')):
-            # Données de démonstration : écrites directement (la règle « responsable = utilisateur » vaut pour la saisie par l'API)
-            Campement.objects.filter(pk=ids[campement]).update(responsable_id=ids[responsable])
+        services.definir_fonction(admin, Fonction.objects.get(pk=ids['F_DI']), admin.date_embauche)
+        # Le superviseur de démonstration (Jean Kouassi, compte créé plus bas) est responsable de « Campement Nord » ;
+        # les autres campements restent au Big Boss. Jean n'est plus rattaché à un bloc : il gère tous ceux de son campement.
+        Campement.objects.filter(pk=ids['C1']).update(responsable_id=ids['P1'])
+        Personne.objects.filter(pk=ids['P1']).update(bloc=None, campement_id=ids['C1'])
 
         # --- Activités (liste officielle) ---
         installer_activites(TypeTravail)
@@ -290,10 +294,10 @@ class Command(BaseCommand):
 
     def vider(self):
         self.stdout.write('Suppression des données existantes...')
-        Campement.objects.update(responsable=None)
+        Personne.objects.update(bloc=None, campement=None)  # casse le cycle personne <-> campement (responsable) avant les suppressions
         for model in MODELES_A_VIDER:
             model.objects.all().delete()
-        Personne.objects.all().delete()
         Bloc.objects.all().delete()
         Campement.objects.all().delete()
+        Personne.objects.all().delete()
         Plantation.objects.all().delete()

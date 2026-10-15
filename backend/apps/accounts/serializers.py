@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from apps.core import validators as v
-from apps.core.models import Bloc, Personne
+from apps.core.models import Campement, Personne
 
 from .models import Journal, RoleUtilisateur, Utilisateur
 
@@ -82,14 +82,15 @@ class RoleSerializer(serializers.ModelSerializer):
 class UtilisateurSerializer(serializers.ModelSerializer):
     """
     Compte d'accès. À la création, le Big Boss rattache le compte à une personne existante (`personne_id`) ou en crée
-    une du même coup (`prenom`, `nom`, `bloc_id`, `telephone` facultatif) : c'est ainsi qu'il crée un superviseur.
+    une du même coup (`prenom`, `nom_personne`, `telephone` facultatif) : c'est ainsi qu'il crée un superviseur. Un superviseur est
+    responsable de campements : `campements_ids` (facultatif) lui confie ces campements, qu'il gère avec tous leurs blocs.
     """
 
     personne_id = v.RelatedField(source='personne', queryset=Personne.objects.all(), required=False)
     prenom = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=100)
     nom_personne = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=100)
     telephone = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=30)
-    bloc_id = v.RelatedField(write_only=True, required=False, queryset=Bloc.objects.all())
+    campements_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False, allow_empty=True)
     nom = serializers.CharField(source='personne.nom_complet', read_only=True)
     email = serializers.EmailField(source='username')
     role = serializers.SlugRelatedField(slug_field='code', queryset=RoleUtilisateur.objects.all(),
@@ -99,7 +100,7 @@ class UtilisateurSerializer(serializers.ModelSerializer):
     class Meta:
         model = Utilisateur
         fields = ['id', 'personne_id', 'nom', 'email', 'role', 'actif', 'derniere_connexion', 'password',
-                  'prenom', 'nom_personne', 'telephone', 'bloc_id']
+                  'prenom', 'nom_personne', 'telephone', 'campements_ids']
         read_only_fields = ['derniere_connexion']
 
     def validate_email(self, value):
@@ -120,10 +121,19 @@ class UtilisateurSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'password': 'Le mot de passe est obligatoire.'})
         if self.instance is None and 'personne' not in attrs:
             manquants = {champ: message for champ, message in (
-                ('prenom', 'Le prénom est obligatoire.'), ('nom_personne', 'Le nom est obligatoire.'),
-                ('bloc_id', "Le bloc d'affectation est obligatoire.")) if not attrs.get(champ)}
+                ('prenom', 'Le prénom est obligatoire.'), ('nom_personne', 'Le nom est obligatoire.')) if not attrs.get(champ)}
             if manquants:
                 raise serializers.ValidationError(manquants)
+        if 'campements_ids' in attrs:
+            ids = list(dict.fromkeys(attrs['campements_ids']))
+            trouves = set(Campement.objects.filter(pk__in=ids).values_list('pk', flat=True))
+            if trouves != set(ids):
+                raise serializers.ValidationError({'campements_ids': 'Campement introuvable.'})
+            attrs['campements_ids'] = ids
+        if self.instance and attrs.get('actif') is False and self.instance.actif                 and self.instance.personne.campements_responsable.exists():
+            raise serializers.ValidationError({'actif': (
+                "Ce compte est responsable de campement : désignez d'abord un autre responsable "
+                "(fiche du campement) avant de le désactiver.")})
         if password:
             try:
                 validate_password(password)
@@ -137,6 +147,16 @@ class UtilisateurSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({'role': 'Vous ne pouvez pas retirer votre propre rôle Big Boss.'})
         return attrs
 
+    @staticmethod
+    def confier_campements(personne, ids):
+        """Confie des campements à ce responsable (ils changent de responsable ; un campement n'est jamais sans responsable)."""
+        if not ids:
+            return
+        Campement.objects.filter(pk__in=ids).update(responsable=personne)
+        if personne.bloc_id is None:  # sa fiche du personnel est rattachée au campement (premier confié), pas à un bloc
+            personne.campement_id = ids[0]
+            personne.save(update_fields=['campement'])
+
     def create(self, validated_data):
         from apps.core.serializers import PersonneSerializer
 
@@ -144,29 +164,36 @@ class UtilisateurSerializer(serializers.ModelSerializer):
         prenom = validated_data.pop('prenom', '')
         nom = validated_data.pop('nom_personne', '')
         telephone = validated_data.pop('telephone', '')
-        bloc = validated_data.pop('bloc', None) or validated_data.pop('bloc_id', None)
+        campements_ids = validated_data.pop('campements_ids', [])
         if 'personne' not in validated_data:
             # Création du compte et de la personne du personnel en une seule fois (le rôle donne la fonction)
             fonction = 'Superviseur' if validated_data['role'].code == RoleUtilisateur.SUPERVISEUR else 'Direction'
-            donnees = {'prenom': prenom, 'nom': nom, 'telephone': telephone, 'bloc_id': bloc.pk, 'fonction_libelle': fonction}
-            personne = PersonneSerializer(data=donnees, context=self.context)
+            donnees = {'prenom': prenom, 'nom': nom, 'telephone': telephone, 'fonction_libelle': fonction}
+            if campements_ids:
+                donnees['campement_id'] = campements_ids[0]
+            # Un responsable n'a pas besoin d'être rattaché à un bloc : sa fiche suit ses campements (ou aucun pour l'instant)
+            personne = PersonneSerializer(data=donnees, context={**self.context, 'sans_campement': True})
             if not personne.is_valid():
                 raise serializers.ValidationError({
                     'prenom' if 'prenom' in personne.errors else 'nom_personne': next(iter(personne.errors.values()))})
             validated_data['personne'] = personne.save()
-        return super().create(validated_data)
+        compte = super().create(validated_data)
+        self.confier_campements(compte.personne, campements_ids)
+        return compte
 
     def update(self, instance, validated_data):
-        for champ in ('prenom', 'nom_personne', 'telephone', 'bloc_id', 'bloc'):
+        for champ in ('prenom', 'nom_personne', 'telephone'):
             validated_data.pop(champ, None)  # champs réservés à la création du compte
+        campements_ids = validated_data.pop('campements_ids', [])
         password = validated_data.pop('password', None)
         if password:
             instance.password_hash = make_password(password)
         # Mot de passe, rôle ou état du compte modifié : les sessions déjà ouvertes cessent de valoir
-        if password or ('role' in validated_data and validated_data['role'].pk != instance.role_id) \
-                or ('actif' in validated_data and validated_data['actif'] != instance.actif):
+        if password or ('role' in validated_data and validated_data['role'].pk != instance.role_id)                 or ('actif' in validated_data and validated_data['actif'] != instance.actif):
             instance.token_version += 1
-        return super().update(instance, validated_data)
+        compte = super().update(instance, validated_data)
+        self.confier_campements(compte.personne, campements_ids)  # ajout de campements (jamais de retrait : on désigne un autre responsable)
+        return compte
 
 
 class JournalSerializer(serializers.ModelSerializer):

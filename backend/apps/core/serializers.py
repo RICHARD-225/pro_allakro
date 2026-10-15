@@ -44,7 +44,7 @@ class PlantationSerializer(serializers.ModelSerializer):
 class CampementSerializer(serializers.ModelSerializer):
     plantation_id = v.RelatedField(source='plantation', queryset=Plantation.objects.all())
     plantation_nom = serializers.CharField(source='plantation.nom', read_only=True)
-    responsable_id = v.RelatedField(source='responsable', queryset=Personne.objects.all(), allow_null=True, required=False)
+    responsable_id = v.RelatedField(source='responsable', queryset=Personne.objects.all())
     responsable_nom = serializers.SerializerMethodField()
     nb_blocs = serializers.IntegerField(read_only=True, default=0)
     created_at = serializers.DateTimeField(source='date_creation', read_only=True)
@@ -74,12 +74,12 @@ class CampementSerializer(serializers.ModelSerializer):
         responsable = attrs.get('responsable')
         if responsable and (self.instance is None or self.instance.responsable_id != responsable.pk):
             v.actif(responsable, 'Le responsable choisi')
-            # Seuls les utilisateurs (comptes créés par le Big Boss) peuvent être responsables d'un campement
+            # Le responsable est un utilisateur actif : superviseur, ou Big Boss (qui peut aussi tenir ce rôle)
             compte = getattr(responsable, 'utilisateur', None)
-            if compte is None or not compte.actif or compte.is_big_boss:
+            if compte is None or not compte.actif:
                 raise serializers.ValidationError({'responsable_id': (
-                    "Le responsable doit être un utilisateur (superviseur) actif créé par le Big Boss : "
-                    "créez d'abord son compte dans Administration > Utilisateurs.")})
+                    "Le responsable doit être un utilisateur actif (superviseur ou Big Boss) : "
+                    "créez d'abord son compte dans Administration > Utilisateurs, ou utilisez « Nouveau responsable ».")})
         try:
             v.unique_insensible(plantation.campements, 'nom', nom, self.instance,
                                 'Un campement de cette plantation porte déjà ce nom.')
@@ -187,9 +187,12 @@ class PersonneSerializer(serializers.ModelSerializer):
     et téléphone sont uniques (contrôle ici avec un message clair, et contraintes PostgreSQL en dernier rempart).
     """
 
+    # Une personne est enregistrée au niveau du CAMPEMENT (elle peut travailler sur tous ses blocs). Le bloc n'est plus demandé :
+    # il reste accepté (anciennes données) et, s'il est donné, le campement est celui du bloc.
     bloc_id = v.RelatedField(source='bloc', queryset=Bloc.objects.select_related('campement__plantation'),
                              required=False, allow_null=True)
-    campement_id = serializers.IntegerField(read_only=True)
+    campement_id = v.RelatedField(source='campement', queryset=Campement.objects.select_related('plantation'),
+                                  required=False, allow_null=True)
     # Fonction choisie dans la liste (fonction_id) ou saisie librement (fonction_libelle, créée si elle n'existe pas)
     fonction_id = v.RelatedField(queryset=Fonction.objects.all(), write_only=True, required=False, allow_null=True)
     fonction_libelle = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=100)
@@ -245,10 +248,21 @@ class PersonneSerializer(serializers.ModelSerializer):
                 "Pour un homonyme, ajoutez un second prénom ou une initiale.")})
 
         bloc = attrs.get('bloc', getattr(self.instance, 'bloc', None))
-        if bloc is None:
-            raise serializers.ValidationError({'bloc_id': 'Le bloc d\'affectation est obligatoire.'})
-        if 'bloc' in attrs and (creation or self.instance.bloc_id != bloc.pk):
-            v.actif(bloc, 'Ce bloc')
+        campement = attrs.get('campement', getattr(self.instance, 'campement', None))
+        if bloc is not None:
+            if 'bloc' in attrs and (creation or self.instance.bloc_id != bloc.pk):
+                v.actif(bloc, 'Ce bloc')
+            if attrs.get('campement') is not None and attrs['campement'].pk != bloc.campement_id:
+                raise serializers.ValidationError({'campement_id': "Ce bloc n'appartient pas au campement choisi."})
+            attrs['campement'] = bloc.campement
+        elif campement is None and not self.context.get('sans_campement'):
+            raise serializers.ValidationError({'campement_id': 'Le campement est obligatoire.'})
+        if attrs.get('campement') is not None and (creation or self.instance.campement_id != attrs['campement'].pk):
+            v.actif(attrs['campement'], 'Ce campement')
+        if self.instance is not None and attrs.get('actif') is False and self.instance.campements_responsable.exists():
+            raise serializers.ValidationError({'actif': (
+                "Cette personne est responsable de campement : désignez d'abord un autre responsable "
+                "(fiche du campement) avant de la désactiver.")})
 
         fonction = attrs.get('fonction_id')
         libelle = normaliser_libelle(attrs.pop('fonction_libelle', '') or '')

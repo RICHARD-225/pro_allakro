@@ -78,17 +78,17 @@ class ApiTestCase(TestCase):
     def activite(libelle):
         return TypeTravail.objects.get(libelle=libelle).pk
 
-    # Petit référentiel : 1 plantation, 1 campement, 2 blocs, 4 personnes affectées au bloc A1
+    # Petit référentiel : 1 plantation, 1 campement (responsable : le superviseur de test), 2 blocs, 4 personnes du campement
     def referentiel(self):
         self.plantation = self.post('plantations/', {'nom': 'Nord', 'superficie': 100})
-        self.campement = self.post('campements/', {'nom': 'Camp A', 'plantation_id': self.plantation['id'], 'superficie': 60})
+        # Le superviseur de test est le responsable du campement « Camp A » : c'est son périmètre
+        self.campement = self.post('campements/', {'nom': 'Camp A', 'plantation_id': self.plantation['id'], 'superficie': 60,
+                                                   'responsable_id': self.superviseur.personne_id})
         self.bloc = self.post('blocs/', {'nom': 'A1', 'campement_id': self.campement['id'], 'superficie': 20, 'nombre_plantes': 2860})
         self.bloc2 = self.post('blocs/', {'nom': 'A2', 'campement_id': self.campement['id'], 'superficie': 20, 'nombre_plantes': 2000})
-        # Le superviseur de test est affecté au bloc A1 : son périmètre est le campement « Camp A »
-        Personne.objects.filter(pk=self.superviseur.personne_id).update(bloc_id=self.bloc['id'], campement_id=self.campement['id'])
         self.personnes = [
             self.post('personnes/', {'nom': f'Nom{i}', 'prenom': 'P', 'telephone': f'07 00 00 00 0{i}',
-                                     'fonction_id': self.fonction.pk, 'bloc_id': self.bloc['id']})
+                                     'fonction_id': self.fonction.pk, 'campement_id': self.campement['id']})
             for i in range(4)
         ]
         return [p['id'] for p in self.personnes]
