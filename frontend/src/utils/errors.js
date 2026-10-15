@@ -2,7 +2,9 @@
 export function showServerErrors(error, { setFormErrors, toast } = {}) {
   if (setFormErrors) setFormErrors(error?.fields || {});
   const hasFieldErrors = error?.fields && Object.keys(error.fields).length > 0;
-  toast?.error(hasFieldErrors && error.status === 400 ? 'Vérifiez les champs signalés.' : error?.message || 'Une erreur est survenue.');
+  // Sans formulaire pour afficher les erreurs de champ (action depuis un menu), on montre le motif lui-même
+  const motif = hasFieldErrors && !setFormErrors ? [Object.values(error.fields).flat()[0]].find((m) => typeof m === 'string' && m) : null;
+  toast?.error(motif || (hasFieldErrors && error.status === 400 ? 'Vérifiez les champs signalés.' : error?.message || 'Une erreur est survenue.'));
 }
 
 // Date du jour locale (AAAA-MM-JJ), et non celle du fuseau UTC

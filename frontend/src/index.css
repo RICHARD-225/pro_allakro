@@ -819,3 +819,9 @@
   #zone-impression .recu--annule::after, #zone-impression .recu--solde::after { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .recu-bandeau, .recu-montant, .recu-mention, .recu-deux, .recu-situation, .recu-signatures, .recu-observation { break-inside: avoid; }
 }
+
+/* Un seul bouton « voir le mot de passe » : on masque celui qu'Edge ajoute de lui-même */
+input[type='password']::-ms-reveal,
+input[type='password']::-ms-clear {
+  display: none;
+}

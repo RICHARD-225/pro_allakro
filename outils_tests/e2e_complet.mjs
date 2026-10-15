@@ -241,12 +241,13 @@ await etape('Menu latéral', async () => {
   await ecran('01_dashboard_clair');
 });
 
-// Données de référence du test (bloc avec au moins 4 personnes actives)
+// Données de référence du test (bloc dont le campement a au moins 4 personnes actives)
 await etape('Données de référence', async () => {
   const blocs = (await api('GET', '/blocs/')).donnees;
   const personnes = (await api('GET', '/personnes/?actif=true')).donnees;
   for (const b of blocs.filter((x) => x.actif)) {
-    const p = personnes.filter((x) => String(x.bloc_id) === String(b.id) && x.actif);
+    // Les personnes sont enregistrées au niveau du campement : celles du campement du bloc travaillent sur ce bloc
+    const p = personnes.filter((x) => String(x.campement_id) === String(b.campement_id) && x.actif);
     if (p.length >= 4) { contexte = { bloc: b, personnes: p.slice(0, 4) }; break; }
   }
   if (!contexte.bloc) throw new Error('aucun bloc avec 4 personnes actives');
@@ -607,7 +608,7 @@ await etape('Personnes : fiche, statut, historique et unicité', async () => {
   await remplir('Prénom', ` ${prenom.toUpperCase()} `);
   await remplir('Nom', reste.join(' ').toLowerCase());
   await remplir('Fonction', 'chef   de chantier');
-  await choisir('Bloc', contexte.bloc.code);
+  await choisir('Campement', contexte.bloc.campement_nom);  // une personne est enregistrée au niveau du campement
   await cliquerBouton('Enregistrer', { exact: true });
   await attendreReseau();
   const erreur = await dialogueTexte();
@@ -930,11 +931,10 @@ await etape('Utilisateurs : le Big Boss crée un superviseur et suit son activit
   await pause(300);
   await cliquerBouton('Créer le compte');
   const erreurs = await dialogueTexte();
-  verifier(erreurs.includes('Le prénom est obligatoire') && erreurs.includes('Le nom est obligatoire') && erreurs.includes("Le bloc d'affectation est obligatoire"),
-    'Création d’un superviseur : prénom, nom et bloc obligatoires', erreurs.slice(0, 160));
+  verifier(erreurs.includes('Le prénom est obligatoire') && erreurs.includes('Le nom est obligatoire') && !erreurs.includes("Le bloc d'affectation"),
+    'Création d’un superviseur : prénom et nom obligatoires (plus de bloc : il est responsable de campements)', erreurs.slice(0, 160));
   await remplir('Prénom', 'Awa');
   await remplir('Nom', 'Suivie E2E');
-  await choisir('Bloc', contexte.bloc.code);
   await remplir('Téléphone', '07 55 44 33 22');
   await remplir('Email (identifiant de connexion)', email);
   await remplir('Mot de passe', 'Superviseur@2026');
@@ -944,8 +944,12 @@ await etape('Utilisateurs : le Big Boss crée un superviseur et suit son activit
   await pause(900);
   const compte = (await api('GET', '/utilisateurs/')).donnees.find((u) => u.email === email);
   const personne = (await api('GET', '/personnes/')).donnees.find((p) => p.nom === 'Suivie E2E');
-  verifier(compte?.role === 'superviseur' && personne?.bloc_id === contexte.bloc.id && personne?.fonction_libelle === 'Superviseur',
-    'Base : compte superviseur et fiche du personnel créés ensemble (bloc affecté)', JSON.stringify([compte?.role, personne?.bloc_id, personne?.fonction_libelle]));
+  verifier(compte?.role === 'superviseur' && !personne?.bloc_id && personne?.fonction_libelle === 'Superviseur',
+    'Base : compte superviseur et fiche du personnel créés ensemble (sans bloc)', JSON.stringify([compte?.role, personne?.bloc_id, personne?.fonction_libelle]));
+  // On lui confie le campement du bloc de référence : il en devient le responsable et gère tous ses blocs
+  const confie = await api('PATCH', `/utilisateurs/${compte.id}/`, { campements_ids: [contexte.bloc.campement_id] });
+  verifier(confie.statut === 200 && (await api('GET', `/campements/${contexte.bloc.campement_id}/`)).donnees.responsable_id === compte.personne_id,
+    'Campement confié au superviseur : il en est le responsable', String(confie.statut));
 
   // Le superviseur se connecte et agit ; le Big Boss le suit
   await api('POST', '/auth/logout/');
@@ -963,7 +967,17 @@ await etape('Utilisateurs : le Big Boss crée un superviseur et suit son activit
     'Fiche de suivi : connexions, actions par type et dernières actions du superviseur', suivi.slice(0, 220).replace(/\n/g, ' '));
   await ecran('16_suivi_utilisateur');
   await cliquerBouton('Fermer', { exact: true });
-  // Désactivation depuis le menu
+  // Désactivation depuis le menu : refusée tant que ce superviseur est responsable d'un campement
+  await actionLigne(email, 'Désactiver le compte');
+  await attendreReseau();
+  await pause(600);
+  const compteEncore = (await api('GET', '/utilisateurs/')).donnees.find((u) => u.email === email);
+  verifier(compteEncore?.actif === true && (await toasts()).includes('responsable de campement'),
+    'Responsable de campement : désactivation refusée tant qu’il gère un campement', (await toasts()).slice(0, 140));
+  // Après avoir désigné un autre responsable (le Big Boss), la désactivation est permise
+  const moiBoss = (await api('GET', '/auth/me/')).donnees;
+  await api('PATCH', `/campements/${contexte.bloc.campement_id}/`, { responsable_id: moiBoss.personne_id });
+  await fermerToasts();
   await actionLigne(email, 'Désactiver le compte');
   await attendreReseau();
   await pause(600);
@@ -1253,6 +1267,14 @@ await etape('Superviseur : droits', async () => {
   verifier((await api('GET', '/tableau-de-bord/?campement_id=999999')).statut === 403, 'Superviseur : tableau de bord d’un autre campement refusé (403)');
   verifier((await api('GET', '/rapport/?campement_id=999999')).statut === 403, 'Superviseur : rapport d’un autre campement refusé (403)');
   verifier((await api('POST', '/plantations/', { nom: 'Pirate', superficie: 1 })).statut === 403, 'Superviseur : création de plantation refusée (403)');
+  verifier((await api('POST', '/campements/', { nom: 'Pirate', plantation_id: camps[0].plantation_id, superficie: 0, responsable_id: moi.personne_id })).statut === 403,
+    'Superviseur : création de campement refusée (403)');
+  // Un responsable crée les blocs de SON campement et y enregistre des personnes (au niveau du campement)
+  const blocSup = await api('POST', '/blocs/', { nom: 'Bloc Responsable E2E', campement_id: camps[0].id, superficie: 1, nombre_plantes: 10 });
+  verifier(blocSup.statut === 201, 'Responsable : création d’un bloc dans son campement', String(blocSup.statut));
+  const ouvrierSup = await api('POST', '/personnes/', { nom: 'OuvrierE2E', prenom: 'Resp', telephone: '07 90 90 90 90', fonction_libelle: 'Manœuvre', campement_id: camps[0].id });
+  verifier(ouvrierSup.statut === 201 && !ouvrierSup.donnees.bloc_id && ouvrierSup.donnees.campement_id === camps[0].id,
+    'Responsable : ouvrier enregistré au niveau du campement (sans bloc)', String(ouvrierSup.statut));
   verifier((await api('GET', '/utilisateurs/')).statut === 403 && (await api('GET', '/journal/')).statut === 403, 'Superviseur : utilisateurs et journal refusés (403)');
   // Pages de structure en lecture seule
   await aller('/plantations');

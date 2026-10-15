@@ -546,3 +546,52 @@ Demande : régler tous les problèmes de sécurité de l'audit et les améliorat
 - La **redirection `/api/*` du site statique** (cookies, en-tête `Host`, `Origin`) n'est pas testée sur Render ; son comportement réel peut obliger à un ajustement.
 - **L'adresse IP vue par l'API** derrière Render : `TRUSTED_PROXY_COUNT` reste à 0 ; les limites par adresse IP s'appliqueront peut-être à tous les visiteurs ensemble.
 - L'envoi de courrier n'est pas configuré (choix). Aucune sauvegarde automatique ; test d'intrusion externe non fait.
+
+
+---
+
+## 14. Page « Exploitation », responsables de campements et ouvriers au niveau du campement (15 octobre 2026, branche `exploitation`)
+
+> Série demandée après la mise en test chez le client : la création plantation → campement → bloc → utilisateur demandait cinq écrans dans un ordre à connaître. **Travail fait sur la branche `exploitation`, non fusionnée dans `main` au moment de cette rédaction** (voir 14.8).
+
+### 14.1 Règles décidées par l'utilisateur
+- **Un campement a toujours un responsable** (jamais sans). Le responsable est un utilisateur : **superviseur ou Big Boss** (le Big Boss peut désormais l'être).
+- **Un responsable gère tous les blocs de ses campements et peut gérer plusieurs campements.** Il n'est plus rattaché à un bloc.
+- **Les ouvriers sont enregistrés au niveau du campement** (ils travaillent sur tous les blocs de ce campement), par les responsables.
+- **Un responsable crée et modifie les blocs de ses campements** ; la suppression d'un bloc, comme toute suppression, reste au Big Boss.
+- **Vue globale « tous mes campements »** pour un responsable de plusieurs campements (par défaut), ou un campement choisi, ou une période.
+- **Déconnexion avec confirmation.**
+
+### 14.2 Backend
+- `Campement.responsable` devient **obligatoire** (PROTECT). Migration `core.0009` : tout campement sans responsable valide (vide, ou personne sans compte actif de superviseur / Big Boss) **reçoit le premier Big Boss actif** ; l'ancien nom (sans compte) est conservé dans la description du campement. La migration échoue avec un message clair s'il n'existe aucun Big Boss actif.
+- `Utilisateur.campements_autorises()` : pour un superviseur = **les campements dont il est responsable** (plus de périmètre par bloc d'affectation).
+- Création / modification de campement : responsable obligatoire (400 sinon), compte actif de superviseur ou Big Boss exigé ; `GET /campements/responsables/` (Big Boss) liste les responsables possibles avec les campements qu'ils gèrent.
+- **Désactivation protégée** : un compte ou une personne responsable d'un campement ne peut pas être désactivé tant qu'il gère un campement (« désignez d'abord un autre responsable »).
+- **Personnes** : `campement_id` obligatoire à la saisie ; `bloc_id` reste accepté (anciennes données ; le campement est alors celui du bloc). La fiche d'un responsable sans campement est rattachée au premier campement qu'on lui confie.
+- **Comptes** : la création d'un compte ne demande plus de bloc ; `campements_ids` (facultatif) confie des campements (ils changent de responsable) ; sur un compte existant, `campements_ids` **ajoute** des campements (on ne retire jamais : on désigne un autre responsable). La représentation d'un compte contient `campements` (ceux qu'il gère).
+- **Blocs** : création et modification autorisées au responsable dans son périmètre (contrôle serveur) ; suppression Big Boss seulement.
+- **Chiffres** : `forcer_perimetre` renvoie, sans choix, **tous les campements du responsable** (liste) ; tableau de bord, bilan, rapports Excel (`mes-campements` dans le nom du fichier) et totaux des listes les acceptent ; un campement choisi qui n'est pas le sien reste refusé (403).
+- Jeux de données (`seed_allakro`, `reinitialiser_base`) adaptés : campements créés avec le Big Boss comme responsable, Jean Kouassi responsable de « Campement Nord » sans bloc.
+
+### 14.3 Interface
+- **Un seul menu « Exploitation »** → page à onglets : **Vue d'ensemble** (arbre plantation → campements → blocs, avec création sur place : « + Campement » sur une plantation, « + Bloc » sur un campement, « + Nouvelle plantation »), **Plantations**, **Campements**, **Blocs** (les listes habituelles). Les anciennes adresses (`/plantations`, `/campements`, `/blocs`) renvoient vers l'onglet correspondant.
+- **Nouvelles fiches** : plantation (ses campements et responsables) et campement (responsable, blocs, personnes, informations) ; la fiche d'un bloc existait déjà. La recherche de l'en-tête et les listes y mènent.
+- **Formulaire de campement** : responsable obligatoire, rôle affiché, et **« + Nouveau responsable »** (crée un compte superviseur sans quitter le formulaire).
+- **Fenêtres de saisie réutilisables** (plantation, campement, bloc) partagées par les listes, l'arbre et les fiches.
+- **Formulaire de personne** : campement (plus de bloc) ; **formulaire de compte** : campements à gérer (facultatif) ; colonne « Campements gérés » sur la page Utilisateurs ; messages de mot de passe alignés sur la vraie règle (10 caractères).
+- **Travaux** : les personnes du campement du bloc choisi sont proposées en premier.
+- **Déconnexion** : fenêtre « Se déconnecter ? » (Annuler / Se déconnecter).
+- Un seul bouton « voir le mot de passe » dans Edge (le bouton natif du navigateur est masqué).
+- Une action refusée depuis un menu (ex. désactivation) affiche **son motif** au lieu de « Vérifiez les champs signalés ».
+
+### 14.4 Vérifications
+- Tests backend : voir 14.7. Navigateur : `outils_tests/verif_exploitation.mjs` (**27 vérifications** : menu, arbre, création plantation → campement avec nouveau responsable → bloc, fiches, anciennes adresses, déconnexion avec confirmation, vue du responsable créé, vue de Jean) ; test de bout en bout **202 vérifications sur 202** (adapté : personnes au campement, superviseurs sans bloc, désactivation refusée puis permise) ; balayage de toutes les pages avec les deux rôles : aucun refus inattendu ; pas de débordement à 390 px sur les nouvelles pages.
+
+### 14.5 À savoir (limites et choix)
+- **Le champ `bloc` des personnes existe toujours** (anciennes données) : les personnes déjà rattachées à un bloc le gardent ; modifier une telle personne dans l'interface la rattache au campement seul.
+- **Aucune restriction serveur** n'empêche un Big Boss d'affecter à un travail une personne d'un autre campement que celui du bloc ; l'interface propose seulement celles du campement en premier.
+- Un compte superviseur **sans campement** est possible (écran vide, mention « Aucun pour le moment ») ; un campement confié à un autre responsable change de responsable immédiatement.
+- **Non fait** : l'assistant de première installation (étape optionnelle, jugée inutile tant que la page Exploitation suffit) ; mots de passe oubliés par e-mail (contournés pour le test Render).
+
+### 14.6 Effet sur la base du client (Render)
+- La migration `core.0009` s'exécutera **au prochain démarrage de l'API après fusion** : si le client a créé des campements sans responsable valide, ils recevront le **premier compte Big Boss actif (le vôtre, `BIG_BOSS_1`)**, à réassigner depuis l'onglet Campements. Les superviseurs que le client a pu créer **avec un bloc** n'auront plus de campement tant qu'on ne leur en confie pas (ou qu'ils ne sont pas désignés responsables).
