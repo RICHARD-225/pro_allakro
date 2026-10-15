@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.audit import BaseViewSet, CodePreviewMixin, log_action
 from apps.accounts.notifications import destinataires, notifier, notifier_big_boss
+from apps.core.utils import ids_campements
 from apps.core.validators import libelle_periode
 from apps.exploitation.models import Travail, TravailParticipant
 
@@ -36,8 +37,9 @@ def salaires_queryset():
 def filtre_perimetre_salaires(queryset, bloc_id=None, campement_id=None):
     if bloc_id:
         return queryset.filter(bloc_id=bloc_id)
-    if campement_id:
-        return queryset.filter(Q(bloc__campement_id=campement_id) | Q(bloc__isnull=True, personne__campement_id=campement_id))
+    ids = ids_campements(campement_id)
+    if ids:
+        return queryset.filter(Q(bloc__campement_id__in=ids) | Q(bloc__isnull=True, personne__campement_id__in=ids))
     return queryset
 
 

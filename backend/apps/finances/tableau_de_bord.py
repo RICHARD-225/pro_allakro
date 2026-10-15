@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 from apps.achats.models import AchatParticulier
 from apps.accounts.permissions import forcer_perimetre
 from apps.core.models import Bloc, Campement
-from apps.core.utils import parse_periode, periode_of, shift_periode
+from apps.core.utils import ids_campements, parse_periode, periode_of, shift_periode
 from apps.exploitation.models import Travail
 from apps.stock.models import Produit
 
@@ -58,7 +58,7 @@ class TableauDeBordView(APIView):
 
         campement_id, bloc_id = forcer_perimetre(request, params.get('campement_id'), params.get('bloc_id'))
         for nom, valeur in (('campement_id', campement_id), ('bloc_id', bloc_id)):
-            if valeur and not valeur.isdigit():
+            if valeur and not isinstance(valeur, list) and not valeur.isdigit():
                 raise serializers.ValidationError({nom: 'Identifiant invalide.'})
 
         return Response(construire_tableau(periode, periodes, campement_id, bloc_id))
@@ -72,7 +72,7 @@ def construire_tableau(periode, periodes, campement_id, bloc_id):
         if bloc_id:
             return qs.filter(**{bloc_lookup: bloc_id})
         if campement_id:
-            return qs.filter(**{campement_lookup: campement_id})
+            return qs.filter(**{f'{campement_lookup}__in': ids_campements(campement_id)})
         return qs
 
     depenses = perimetre(Depense.objects.all())
@@ -109,7 +109,7 @@ def construire_tableau(periode, periodes, campement_id, bloc_id):
 
     campements = Campement.objects.filter(actif=True).select_related('responsable')
     if campement_id:
-        campements = campements.filter(pk=campement_id)
+        campements = campements.filter(pk__in=ids_campements(campement_id))
     filtre_dep = Q(depenses__date_depense__range=(debut, fin))
     if bloc_id:
         filtre_dep &= Q(depenses__bloc_id=bloc_id)

@@ -23,7 +23,7 @@ def forcer_perimetre(request, campement_id=None, bloc_id=None):
         return campement_id, bloc_id
     if not ids:
         raise exceptions.PermissionDenied("Aucun campement ne vous est affecté : contactez le Big Boss.")
-    # Un superviseur peut gérer plusieurs campements : il choisit parmi les siens ; sans choix, le premier (par nom)
+    # Un responsable gère un ou plusieurs campements : il choisit l'un des siens ; sans choix, la vue est GLOBALE (tous ses campements)
     autorises = {str(i) for i in ids}
     if bloc_id:
         if not str(bloc_id).isdigit() or not Bloc.objects.filter(pk=bloc_id, campement_id__in=ids).exists():
@@ -33,4 +33,6 @@ def forcer_perimetre(request, campement_id=None, bloc_id=None):
         return campement_id, bloc_id
     if campement_id and str(campement_id) not in autorises:
         raise exceptions.PermissionDenied("Ce campement n'est pas le vôtre.")
-    return str(campement_id or ids[0]), bloc_id
+    if campement_id:
+        return str(campement_id), bloc_id
+    return (str(ids[0]) if len(ids) == 1 else list(ids)), bloc_id

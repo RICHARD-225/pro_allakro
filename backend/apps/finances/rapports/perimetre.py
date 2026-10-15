@@ -2,7 +2,7 @@
 from rest_framework import serializers
 
 from apps.core.models import Bloc, Campement
-from apps.core.utils import parse_periode
+from apps.core.utils import ids_campements, parse_periode
 from apps.core.validators import libelle_periode
 from apps.finances.models import Salaire
 from apps.finances.views import filtre_perimetre_salaires
@@ -20,12 +20,17 @@ class Perimetre:
             except Exception:
                 raise serializers.ValidationError({'periode': 'Période invalide (format attendu : AAAA-MM).'})
 
+        # « Tous mes campements » (responsable de plusieurs campements) : une liste d'identifiants
+        liste = campement_id if isinstance(campement_id, (list, tuple)) else None
+        if liste is not None:
+            campement_id = None
         for nom, valeur in (('campement_id', campement_id), ('bloc_id', bloc_id)):
             if valeur and not str(valeur).isdigit():
                 raise serializers.ValidationError({nom: 'Identifiant invalide.'})
 
         self.bloc = None
         self.campement = None
+        self.campements = None  # plusieurs campements (vue globale d'un responsable) ; None sinon
         if bloc_id:
             self.bloc = Bloc.objects.select_related('campement').filter(pk=bloc_id).first()
             if self.bloc is None:
@@ -35,6 +40,8 @@ class Perimetre:
             self.campement = Campement.objects.filter(pk=campement_id).first()
             if self.campement is None:
                 raise serializers.ValidationError({'campement_id': 'Élément introuvable.'})
+        elif liste:
+            self.campements = list(Campement.objects.filter(pk__in=ids_campements(liste)).order_by('nom'))
 
     @classmethod
     def depuis_parametres(cls, params):
@@ -51,11 +58,13 @@ class Perimetre:
             return f"Bloc {self.bloc.code} — {self.bloc.nom} ({self.campement.nom})"
         if self.campement:
             return f"{self.campement.nom} ({self.campement.code})"
+        if self.campements:
+            return "Mes campements : " + ", ".join(c.nom for c in self.campements)
         return "Toute l'exploitation"
 
     @property
     def nom_fichier(self):
-        suffixe = f"_{self.bloc.code}" if self.bloc else (f"_{self.campement.code}" if self.campement else '')
+        suffixe = f"_{self.bloc.code}" if self.bloc else (f"_{self.campement.code}" if self.campement else ('_mes-campements' if self.campements else ''))
         return f"ALLAKRO_Rapport_{self.periode or 'complet'}{suffixe}.xlsx"
 
     # --- Filtres ---
@@ -64,6 +73,8 @@ class Perimetre:
             return queryset.filter(**{bloc: self.bloc.pk})
         if self.campement:
             return queryset.filter(**{campement: self.campement.pk})
+        if self.campements:
+            return queryset.filter(**{f'{campement}__in': [c.pk for c in self.campements]})
         return queryset
 
     def sur_periode(self, queryset, champ):
@@ -76,5 +87,8 @@ class Perimetre:
             queryset = queryset.filter(annulee=False).exclude(travail__statut='ANNULE')
         if self.debut:
             queryset = queryset.filter(date_debut__range=(self.debut, self.fin))
-        return filtre_perimetre_salaires(queryset, self.bloc.pk if self.bloc else None,
-                                         self.campement.pk if self.campement and not self.bloc else None)
+        if self.bloc:
+            return filtre_perimetre_salaires(queryset, self.bloc.pk, None)
+        if self.campements:
+            return filtre_perimetre_salaires(queryset, None, [c.pk for c in self.campements])
+        return filtre_perimetre_salaires(queryset, None, self.campement.pk if self.campement else None)

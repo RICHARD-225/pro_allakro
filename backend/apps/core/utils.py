@@ -166,3 +166,11 @@ def montant_en_lettres(valeur):
     de = "de " if entier >= 10 ** 6 and entier % 10 ** 6 == 0 else ""
     return f"{texte[:1].upper()}{texte[1:]} {de}{'francs' if entier > 1 else 'franc'} CFA"
 
+
+def ids_campements(valeur):
+    """Périmètre « campement » sous forme de liste d'identifiants : None (tous), un identifiant, ou une liste (« tous mes campements »)."""
+    if valeur in (None, '', []):
+        return None
+    if isinstance(valeur, (list, tuple, set)):
+        return [int(i) for i in valeur]
+    return [int(valeur)]

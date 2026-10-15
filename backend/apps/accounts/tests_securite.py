@@ -469,3 +469,29 @@ class PerimetreParCampementTests(ApiTestCase):
         self.assertEqual(self.get(f"campements/{self.campement_b['id']}/")['responsable_id'], compte['personne_id'])
         self.login('koffi@test.ci', 'Superviseur@2026')
         self.assertEqual(self.ids('campements/'), {self.campement_b['id']})
+
+    def test_vue_globale_d_un_responsable_de_plusieurs_campements(self):
+        """Sans choix : tous ses campements ; avec un choix : celui-là seulement ; jamais un campement qui n'est pas le sien."""
+        self.login(self.admin.username)
+        self.patch(f"campements/{self.campement_b['id']}/", {'responsable_id': self.superviseur.personne_id})
+        self.login(self.superviseur.username)
+        periode = HIER[:7]
+        total = lambda url: self.get(url)['kpis']['totalDepenses']  # noqa: E731
+        self.assertEqual(total(f'tableau-de-bord/?periode={periode}'), 3000.0)                                   # vue globale : A + B
+        self.assertEqual(total(f"tableau-de-bord/?periode={periode}&campement_id={self.campement['id']}"), 1000.0)    # A
+        self.assertEqual(total(f"tableau-de-bord/?periode={periode}&campement_id={self.campement_b['id']}"), 2000.0)  # B
+        par_campement = {c['label']: c['value'] for c in self.get(f'tableau-de-bord/?periode={periode}')['depensesParCampement']}
+        self.assertEqual(par_campement, {'Camp A': 1000.0, 'Camp B': 2000.0})
+        # Rapport Excel : global par défaut, nommé « mes campements »
+        reponse = self.client.get(f'/api/v1/rapport/?periode={periode}')
+        self.assertEqual(reponse.status_code, 200)
+        self.assertIn('mes-campements', reponse['Content-Disposition'])
+        # Listes : les deux campements, totaux compris
+        self.assertEqual({d['id'] for d in self.get('depenses/')}, {self.depense_a['id'], self.depense_b['id']})
+        self.assertEqual(self.get('depenses/totaux/')['total'], 3000.0)
+        # Un campement qu'il ne gère pas reste refusé
+        self.login(self.admin.username)
+        autre = self.post('campements/', {'nom': 'Camp X', 'plantation_id': self.plantation['id'], 'superficie': 0,
+                                          'responsable_id': self.admin.personne_id})
+        self.login(self.superviseur.username)
+        self.assertEqual(self.client.get(f"/api/v1/tableau-de-bord/?campement_id={autre['id']}").status_code, 403)
