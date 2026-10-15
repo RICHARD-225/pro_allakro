@@ -595,3 +595,9 @@ Demande : régler tous les problèmes de sécurité de l'audit et les améliorat
 
 ### 14.6 Effet sur la base du client (Render)
 - La migration `core.0009` s'exécutera **au prochain démarrage de l'API après fusion** : si le client a créé des campements sans responsable valide, ils recevront le **premier compte Big Boss actif (le vôtre, `BIG_BOSS_1`)**, à réassigner depuis l'onglet Campements. Les superviseurs que le client a pu créer **avec un bloc** n'auront plus de campement tant qu'on ne leur en confie pas (ou qu'ils ne sont pas désignés responsables).
+
+### 14.7 Tests
+- **161 tests backend sur 161** (155 + 6 nouveaux : responsable obligatoire, désactivation protégée, blocs créés par le responsable, ouvriers au niveau du campement, compte sans campement puis campements confiés, vue globale d'un responsable de plusieurs campements ; plusieurs tests existants réécrits selon les nouvelles règles).
+
+### 14.8 État de la branche
+- Branche `exploitation` poussée sur GitHub ; **`main` et le site de test Render ne sont pas modifiés** tant qu'elle n'est pas fusionnée. Avant fusion : sauvegarder la base locale, puis `manage.py migrate` (reprise `core.0009`) et redémarrer les serveurs ; après fusion, Render migre seul au redémarrage (voir 14.6).
