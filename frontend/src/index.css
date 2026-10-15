@@ -859,7 +859,8 @@ input[type='password']::-ms-clear {
 @keyframes barreDisparition { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
 
 /* Entrée d'une page : le contenu apparaît en fondu, en glissant légèrement, bloc après bloc */
-.page-entree > * { animation: pageEntree 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+/* « backwards » : une fois l'animation finie, plus aucun déplacement ne reste appliqué (sinon les fenêtres plein écran seraient rognées) */
+.page-entree > * { animation: pageEntree 0.42s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
 .page-entree > *:nth-child(2) { animation-delay: 0.05s; }
 .page-entree > *:nth-child(3) { animation-delay: 0.1s; }
 .page-entree > *:nth-child(4) { animation-delay: 0.15s; }

@@ -76,6 +76,16 @@ try {
   await pause(700);
   await page.evaluate(() => [...document.querySelectorAll('[role=dialog] button')].find((b) => b.textContent.includes('Nouveau responsable')).click());
   await pause(600);
+  // Une fenêtre doit recouvrir TOUT l'écran (en-tête et menu compris) : l'animation d'entrée de la page ne doit pas la rogner
+  const couverture = await page.evaluate(() => {
+    const dlg = [...document.querySelectorAll('[role=dialog]')].pop();
+    let e = dlg;
+    while (e && !(e.classList.contains('fixed') && e.classList.contains('inset-0'))) e = e.parentElement;
+    const r = e?.getBoundingClientRect();
+    return r ? { haut: r.top, gauche: r.left, largeur: Math.round(r.width), hauteur: Math.round(r.height), ecran: [innerWidth, innerHeight] } : null;
+  });
+  verifier(couverture && couverture.haut === 0 && couverture.gauche === 0 && couverture.largeur === couverture.ecran[0] && couverture.hauteur === couverture.ecran[1],
+    'Fenêtre : le fond grisé recouvre tout l’écran (en-tête et menu compris)', JSON.stringify(couverture));
   const idDe = (l) => page.evaluate((lib) => {
     const dlg = [...document.querySelectorAll('[role=dialog]')].pop();
     return [...dlg.querySelectorAll('label')].find((x) => x.textContent.replace(/\*/g, '').replace(/\s+/g, ' ').trim().startsWith(lib))?.getAttribute('for');
@@ -92,7 +102,9 @@ try {
   });
   verifier(bouton && bouton.occupe === 'true' && bouton.barre === 'barreDefile', 'Bouton en cours d’action : barre de progression sur le bouton', JSON.stringify(bouton));
   await page.screenshot({ path: join(SORTIE, '2_bouton_en_cours.png') });
-  await pause(2500);
+  // la création d'un compte hache le mot de passe : on attend la fin réelle de l'opération
+  await page.waitForFunction(() => ![...document.querySelectorAll('[role=dialog] .btn-chargement')].length, { timeout: 30000 }).catch(() => undefined);
+  await pause(600);
   const erreurs = await page.evaluate(() => {
     const dlg = [...document.querySelectorAll('[role=dialog]')].pop();
     return [...dlg.querySelectorAll('p')].filter((p) => /déjà attribué/.test(p.textContent)).map((p) => {
