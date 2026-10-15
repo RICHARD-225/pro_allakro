@@ -121,9 +121,9 @@ export default function TravailFormulaire({
             options={optionsPersonnes}
             value={form.personnes_ids}
             onChange={choisirPersonnes}
-            placeholder="Nom, matricule ou bloc..."
+            placeholder="Nom, matricule ou campement..."
             error={formErrors.personnes_ids}
-            hint={form.bloc_id ? 'Les personnes affectées au bloc choisi apparaissent en premier.' : undefined}
+            hint={form.bloc_id ? 'Les personnes du campement du bloc choisi apparaissent en premier.' : undefined}
           />
           {form.personnes_ids.length === 1 && (
             <p className="flex items-center gap-2 rounded-lg bg-cream-50 px-3 py-2 text-sm text-ink-700">

@@ -134,19 +134,21 @@ export default function TravauxPage() {
   const optionsRenseignees = form.nombre_jours !== '' || form.observation.trim() !== '';
   const erreurOptions = !!(formErrors.nombre_jours || formErrors.observation);
 
-  // Personnes proposées : actives (et celles déjà sur le travail), celles du bloc choisi en premier
+  // Personnes proposées : actives (et celles déjà sur le travail), celles du campement du bloc choisi en premier
+  // (une personne est enregistrée au niveau du campement et travaille sur tous ses blocs)
   const optionsPersonnes = useMemo(() => {
     const dejaLa = new Set(enModification ? edition.personnes_ids : []);
+    const campementDuBloc = blocs.find((b) => b.id === form.bloc_id)?.campement_id;
     return personnes
       .filter((p) => p.actif || dejaLa.has(p.id))
-      .sort((a, b) => ((b.bloc_id === form.bloc_id) - (a.bloc_id === form.bloc_id))
+      .sort((a, b) => ((b.campement_id === campementDuBloc) - (a.campement_id === campementDuBloc))
         || `${a.prenom} ${a.nom}`.localeCompare(`${b.prenom} ${b.nom}`, 'fr'))
       .map((p) => ({
         value: p.id,
         label: `${p.prenom} ${p.nom}`,
-        hint: [p.matricule, p.bloc_code || 'sans bloc', p.fonction_libelle].filter(Boolean).join(' · '),
+        hint: [p.matricule, p.campement_nom || 'sans campement', p.fonction_libelle].filter(Boolean).join(' · '),
       }));
-  }, [personnes, form.bloc_id, edition, enModification]);
+  }, [personnes, blocs, form.bloc_id, edition, enModification]);
 
   const ouvrir = (travail = null) => {
     if (travail) {

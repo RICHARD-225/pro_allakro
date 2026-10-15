@@ -92,6 +92,7 @@ class UtilisateurSerializer(serializers.ModelSerializer):
     telephone = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=30)
     campements_ids = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False, allow_empty=True)
     nom = serializers.CharField(source='personne.nom_complet', read_only=True)
+    campements = serializers.SerializerMethodField()
     email = serializers.EmailField(source='username')
     role = serializers.SlugRelatedField(slug_field='code', queryset=RoleUtilisateur.objects.all(),
                                         error_messages={'does_not_exist': 'Rôle inconnu.'})
@@ -99,9 +100,13 @@ class UtilisateurSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Utilisateur
-        fields = ['id', 'personne_id', 'nom', 'email', 'role', 'actif', 'derniere_connexion', 'password',
+        fields = ['id', 'personne_id', 'nom', 'email', 'role', 'actif', 'derniere_connexion', 'password', 'campements',
                   'prenom', 'nom_personne', 'telephone', 'campements_ids']
         read_only_fields = ['derniere_connexion']
+
+    def get_campements(self, obj):
+        """Campements dont ce compte est responsable (ceux qu'il gère, avec tous leurs blocs)."""
+        return [{'id': c.pk, 'nom': c.nom} for c in obj.personne.campements_responsable.order_by('nom')]
 
     def validate_email(self, value):
         value = value.strip().lower()

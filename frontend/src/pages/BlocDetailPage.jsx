@@ -44,12 +44,13 @@ export default function BlocDetailPage() {
 
   useEffect(() => {
     // Données filtrées par le serveur sur ce bloc
-    Promise.all([
-      blocsService.getById(id),
+    // Les personnes sont enregistrées au niveau du campement : celles du campement du bloc travaillent sur tous ses blocs
+    blocsService.getById(id).then((b) => Promise.all([
+      Promise.resolve(b),
       travauxService.getByBloc(id),
       depensesService.getAll({ bloc_id: id }),
-      personnesService.getAll({ bloc_id: id }),
-    ]).then(([b, t, d, p]) => {
+      personnesService.getAll({ campement_id: b.campement_id }),
+    ])).then(([b, t, d, p]) => {
       setBloc(b);
       setTravaux(t);
       setDepenses(d);
@@ -153,7 +154,7 @@ export default function BlocDetailPage() {
             </thead>
             <tbody className="divide-y divide-ink-100/60">
               {personnes.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-ink-500">Aucune personne affectée à ce bloc</td></tr>
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-ink-500">Aucune personne enregistrée dans ce campement</td></tr>
               ) : personnes.map((p) => (
                 <tr key={p.id} className="table-row-hover cursor-pointer" onClick={() => setPersonneOuverte(p)}>
                   <td className={TD}><span className="text-xs tabular-nums text-forest-700">{p.matricule}</span></td>

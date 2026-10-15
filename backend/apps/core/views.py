@@ -88,9 +88,9 @@ class PersonneViewSet(CodePreviewMixin, BaseViewSet):
     audit_label = 'Personne'
     filter_map = {'campement_id': 'campement_id', 'bloc_id': 'bloc_id'}
     ordre_defaut = ('-date_creation', '-id')
-    search_fields = ('matricule', 'nom', 'prenom', 'telephone', 'bloc__code', 'fonctions__fonction__libelle')
+    search_fields = ('matricule', 'nom', 'prenom', 'telephone', 'bloc__code', 'campement__nom', 'fonctions__fonction__libelle')
     ordering_fields = {'nom': ('nom', 'prenom'), 'fonction_libelle': 'fonctions__fonction__libelle', 'bloc_code': 'bloc__code',
-                       'date_embauche': 'date_embauche'}
+                       'campement_nom': 'campement__nom', 'date_embauche': 'date_embauche'}
     totaux_agregats = {'nombre': Count('id', distinct=True), 'actifs': Count('id', filter=Q(actif=True), distinct=True)}
 
     def perimetre(self, queryset, ids):

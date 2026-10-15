@@ -112,7 +112,7 @@ export default function BlocsPage() {
   ];
 
   const ActionsCell = ({ row }) => (
-    <RowActions onView={() => navigate(`/blocs/${row.id}`)} onEdit={isBoss ? () => ouvrir(row) : undefined}
+    <RowActions onView={() => navigate(`/blocs/${row.id}`)} onEdit={() => ouvrir(row)}
       onDelete={isBoss ? () => demander(row) : undefined} />
   );
 
@@ -124,7 +124,7 @@ export default function BlocsPage() {
         title="Blocs / Parcelles"
         subtitle="Superficie, plantes et personnes de chaque bloc"
         icon={Leaf}
-        actions={isBoss ? <Button size="sm" onClick={() => ouvrir()}><Plus size={16} /> Nouveau bloc</Button> : undefined}
+        actions={<Button size="sm" onClick={() => ouvrir()}><Plus size={16} /> Nouveau bloc</Button>}
       />
       <DataTable
         columns={columns}
@@ -146,7 +146,7 @@ export default function BlocsPage() {
         filtersActive={compterFiltres(filterCampement)}
         onResetFilters={() => setFilterCampement('')}
         emptyTitle="Aucun bloc"
-        emptyAction={isBoss ? <Button size="sm" onClick={() => ouvrir()}><Plus size={14} /> Nouveau bloc</Button> : undefined}
+        emptyAction={<Button size="sm" onClick={() => ouvrir()}><Plus size={14} /> Nouveau bloc</Button>}
       />
       {dialogue}
 

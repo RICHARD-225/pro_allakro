@@ -3,19 +3,18 @@ import { UserCircle, Plus, User, Power, PowerOff, Eye, LockOpen } from 'lucide-r
 import PageHeader from '@/components/PageHeader';
 import RowActions from '@/components/RowActions';
 import SuiviUtilisateur from '@/components/SuiviUtilisateur';
-import BlocPicker from '@/components/BlocPicker';
-import { DataTable, Badge, Button, ErrorState, Modal, Input, Select } from '@/components/ui';
+import { DataTable, Badge, Button, ErrorState, Modal, Input, Select, MultiSelect } from '@/components/ui';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { utilisateursService, personnesService, campementsService, blocsService } from '@/services';
+import { utilisateursService, personnesService, campementsService } from '@/services';
 import { formatDateTime } from '@/utils/format';
 import { showServerErrors } from '@/utils/errors';
 import { ROLE_LABELS, ROLE } from '@/constants';
 
-// Création : le Big Boss saisit la personne (prénom, nom, bloc) et son compte d'un seul coup ; « existante » rattache le compte à
+// Création : le Big Boss saisit la personne (prénom, nom) et son compte d'un seul coup ; un superviseur est responsable de campements ; « existante » rattache le compte à
 // une personne déjà enregistrée
 const EMPTY_FORM = {
-  prenom: '', nom_personne: '', telephone: '', campement_id: '', bloc_id: '',
+  prenom: '', nom_personne: '', telephone: '', campements_ids: [],
   personne_id: '', email: '', role: ROLE.SUPERVISOR, password: '',
 };
 
@@ -24,7 +23,6 @@ export default function UtilisateursPage() {
   const [data, setData] = useState([]);
   const [personnes, setPersonnes] = useState([]);
   const [campements, setCampements] = useState([]);
-  const [blocs, setBlocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [edition, setEdition] = useState(null); // null fermé · 'nouveau' · compte modifié
@@ -36,8 +34,8 @@ export default function UtilisateursPage() {
   const toast = useToast();
 
   useEffect(() => {
-    Promise.all([utilisateursService.getAll(), personnesService.getAll(), campementsService.getAll(), blocsService.getAll()])
-      .then(([u, p, c, b]) => { setData(u); setPersonnes(p); setCampements(c); setBlocs(b); })
+    Promise.all([utilisateursService.getAll(), personnesService.getAll(), campementsService.getAll()])
+      .then(([u, p, c]) => { setData(u); setPersonnes(p); setCampements(c); })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
@@ -64,13 +62,12 @@ export default function UtilisateursPage() {
       } else {
         if (!form.prenom.trim()) errs.prenom = 'Le prénom est obligatoire';
         if (!form.nom_personne.trim()) errs.nom_personne = 'Le nom est obligatoire';
-        if (!form.bloc_id) errs.bloc_id = "Le bloc d'affectation est obligatoire";
       }
     }
     if (!form.email.trim()) errs.email = "L'email est obligatoire";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'Email invalide';
     if (!form.role) errs.role = 'Le rôle est obligatoire';
-    if ((!enModification || form.password) && form.password.length < 8) errs.password = 'Le mot de passe doit contenir au moins 8 caractères';
+    if ((!enModification || form.password) && form.password.length < 10) errs.password = 'Le mot de passe doit contenir au moins 10 caractères (majuscule, minuscule et chiffre)';
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -81,16 +78,17 @@ export default function UtilisateursPage() {
     try {
       const email = form.email.trim().toLowerCase();
       if (enModification) {
-        const payload = { email, role: form.role, ...(form.password ? { password: form.password } : {}) };
+        const payload = { email, role: form.role, ...(form.password ? { password: form.password } : {}),
+          ...(form.campements_ids.length ? { campements_ids: form.campements_ids } : {}) };
         const item = await utilisateursService.update(edition.id, payload);
         setData((d) => d.map((x) => (x.id === item.id ? item : x)));
         toast.success(form.password ? `Compte de ${item.nom} modifié (nouveau mot de passe)` : `Compte de ${item.nom} modifié`);
       } else {
         const payload = existante
-          ? { personne_id: form.personne_id, email, role: form.role, password: form.password }
+          ? { personne_id: form.personne_id, email, role: form.role, password: form.password, campements_ids: form.campements_ids }
           : {
             prenom: form.prenom.trim(), nom_personne: form.nom_personne.trim(), telephone: form.telephone.trim(),
-            bloc_id: form.bloc_id, email, role: form.role, password: form.password,
+            campements_ids: form.campements_ids, email, role: form.role, password: form.password,
           };
         const item = await utilisateursService.create(payload);
         setData((d) => [item, ...d]);
@@ -144,6 +142,9 @@ export default function UtilisateursPage() {
         {ROLE_LABELS[row.role] || row.role}
       </Badge>
     ) },
+    { key: 'campements', header: 'Campements gérés', mobile: false, render: (row) => (row.campements?.length
+      ? <span className="text-ink-700">{row.campements.map((c) => c.nom).join(', ')}</span>
+      : <span className="text-ink-400">{row.role === ROLE.SUPERVISOR ? 'Aucun pour le moment' : '—'}</span>) },
     { key: 'actif', header: 'Statut', render: (row) => <Badge status={row.actif ? 'active' : 'inactive'}>{row.actif ? 'Actif' : 'Inactif'}</Badge> },
     { key: 'derniere_connexion', header: 'Dernière connexion', sortable: true, render: (row) => <span className="tabular-nums">{formatDateTime(row.derniere_connexion)}</span> },
   ];
@@ -212,14 +213,6 @@ export default function UtilisateursPage() {
                 <Input label="Prénom" required value={form.prenom} onChange={(e) => setForm({ ...form, prenom: e.target.value })} error={formErrors.prenom} />
                 <Input label="Nom" required value={form.nom_personne} onChange={(e) => setForm({ ...form, nom_personne: e.target.value })} error={formErrors.nom_personne} />
               </div>
-              <BlocPicker
-                campements={campements}
-                blocs={blocs}
-                value={form}
-                onChange={(v) => setForm({ ...form, ...v })}
-                required
-                errors={formErrors}
-              />
               <Input
                 label="Téléphone"
                 type="tel"
@@ -270,6 +263,18 @@ export default function UtilisateursPage() {
             onChange={(e) => setForm({ ...form, role: e.target.value })}
             error={formErrors.role}
           />
+          {form.role === ROLE.SUPERVISOR && (
+            <MultiSelect
+              label={enModification ? 'Confier des campements supplémentaires' : 'Campements à gérer (facultatif)'}
+              options={campements.filter((c) => c.actif && !(enModification && edition.campements?.some((x) => x.id === c.id)))
+                .map((c) => ({ value: c.id, label: c.nom, hint: c.responsable_nom ? `actuellement : ${c.responsable_nom}` : '' }))}
+              value={form.campements_ids}
+              onChange={(ids) => setForm({ ...form, campements_ids: ids })}
+              placeholder="Rechercher un campement..."
+              error={formErrors.campements_ids}
+              hint="Le responsable gère tous les blocs de ses campements et peut en gérer plusieurs. Un campement confié change de responsable."
+            />
+          )}
           <Input
             label={enModification ? 'Nouveau mot de passe' : 'Mot de passe'}
             required={!enModification}

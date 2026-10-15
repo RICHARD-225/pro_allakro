@@ -7,6 +7,7 @@ import { DataTable, Badge, Button, ErrorState, Modal, Input, Select } from '@/co
 import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSuppression } from '@/hooks/useSuppression';
+import NouveauResponsableModal from '@/components/NouveauResponsableModal';
 import { campementsService, plantationsService } from '@/services';
 import { formatNumber } from '@/utils/format';
 import { showServerErrors } from '@/utils/errors';
@@ -20,6 +21,7 @@ export default function CampementsPage() {
   const [data, setData] = useState([]);
   const [plantations, setPlantations] = useState([]);
   const [responsables, setResponsables] = useState([]);
+  const [nouveauResponsable, setNouveauResponsable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [edition, setEdition] = useState(null);
@@ -64,6 +66,7 @@ export default function CampementsPage() {
     const errs = {};
     if (!form.nom.trim()) errs.nom = 'Le nom est obligatoire';
     if (!form.plantation_id) errs.plantation_id = 'La plantation est obligatoire';
+    if (!form.responsable_id) errs.responsable_id = 'Le responsable est obligatoire : un campement a toujours un responsable';
     if (form.superficie && !(Number(form.superficie) >= 0)) errs.superficie = 'La superficie doit être un nombre positif';
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
@@ -75,7 +78,7 @@ export default function CampementsPage() {
     const payload = {
       nom: form.nom.trim(),
       plantation_id: form.plantation_id,
-      responsable_id: form.responsable_id || null,
+      responsable_id: form.responsable_id,
       superficie: Number(form.superficie) || 0,
       actif: form.actif,
     };
@@ -165,18 +168,22 @@ export default function CampementsPage() {
           />
           <Select
             label="Responsable"
+            required
             options={[...(form.responsable_id && !responsables.some((p) => p.id === form.responsable_id)
               ? [{ value: form.responsable_id, label: `${data.find((c) => c.responsable_id === form.responsable_id)?.responsable_nom || 'Responsable actuel'} (sans compte utilisateur)` }] : []),
             ...responsables.map((p) => ({
               value: p.id,
-              label: `${p.prenom} ${p.nom} — ${p.matricule}${p.campements.length ? ` (gère : ${p.campements.join(', ')})` : ''}`,
+              label: `${p.prenom} ${p.nom} — ${p.role_libelle}${p.campements.length ? ` (gère : ${p.campements.join(', ')})` : ''}`,
             }))]}
-            placeholder="Choisir un utilisateur (superviseur)"
-            hint="Un responsable peut gérer plusieurs campements."
+            placeholder="Choisir un responsable"
+            hint="Superviseur ou Big Boss. Un responsable peut gérer plusieurs campements et tous leurs blocs."
             value={form.responsable_id}
             onChange={(e) => setForm({ ...form, responsable_id: e.target.value })}
             error={formErrors.responsable_id}
           />
+          <button type="button" onClick={() => setNouveauResponsable(true)} className="-mt-2 text-xs font-medium text-forest-700 hover:underline">
+            + Nouveau responsable (créer un compte superviseur)
+          </button>
           <Input
             label="Superficie (ha)"
             type="number"
@@ -196,6 +203,15 @@ export default function CampementsPage() {
           )}
         </div>
       </Modal>
+      <NouveauResponsableModal
+        open={nouveauResponsable}
+        onClose={() => setNouveauResponsable(false)}
+        onCree={async ({ id }) => {
+          const liste = await campementsService.responsables().catch(() => responsables);
+          setResponsables(liste);
+          setForm((f) => ({ ...f, responsable_id: id }));
+        }}
+      />
     </div>
   );
 }

@@ -82,7 +82,7 @@ export default function PersonnesPage() {
     if (!form.nom.trim()) errs.nom = 'Le nom est obligatoire';
     if (!form.prenom.trim()) errs.prenom = 'Le prénom est obligatoire';
     if (!form.fonction.trim()) errs.fonction_id = 'La fonction est obligatoire';
-    if (!form.bloc_id) errs.bloc_id = "Le bloc d'affectation est obligatoire";
+    if (!form.campement_id) errs.campement_id = 'Le campement est obligatoire';
     if (form.telephone && !/^\+?[0-9][0-9\s().-]{7,19}$/.test(form.telephone.trim())) errs.telephone = 'Numéro de téléphone invalide';
     if (!form.date_embauche) errs.date_embauche = "La date d'embauche est obligatoire";
     else if (form.date_embauche > today()) errs.date_embauche = 'La date ne peut pas être dans le futur';
@@ -96,7 +96,8 @@ export default function PersonnesPage() {
     // Fonction choisie ou saisie librement : le serveur réutilise l'existante (majuscules et espaces ignorés)
     const payload = {
       nom: form.nom.trim(), prenom: form.prenom.trim(), telephone: form.telephone.trim(), adresse: form.adresse.trim(),
-      fonction_libelle: form.fonction.trim(), bloc_id: form.bloc_id, date_embauche: form.date_embauche,
+      // Une personne est enregistrée au niveau du campement : elle peut travailler sur tous ses blocs
+      fonction_libelle: form.fonction.trim(), campement_id: form.campement_id, bloc_id: null, date_embauche: form.date_embauche,
       ...(enModification ? { actif: form.actif } : {}),
     };
     try {
@@ -130,10 +131,10 @@ export default function PersonnesPage() {
       </div>
     ) },
     { key: 'fonction_libelle', header: 'Fonction', sortable: true, render: (row) => row.fonction_libelle || '—' },
-    { key: 'bloc_code', header: 'Bloc', sortable: true, render: (row) => (row.bloc_code ? (
+    { key: 'campement_nom', header: 'Campement', sortable: true, render: (row) => (row.campement_nom ? (
       <span>
-        <span className="tabular-nums">{row.bloc_code}</span>
-        <span className="block text-xs text-ink-500">{row.campement_nom}</span>
+        {row.campement_nom}
+        {row.bloc_code && <span className="block text-xs text-ink-500 tabular-nums">{row.bloc_code}</span>}
       </span>
     ) : <Badge status="unpaid">À affecter</Badge>) },
     { key: 'telephone', header: 'Téléphone', mobile: false, render: (row) => (row.telephone
@@ -234,13 +235,15 @@ export default function PersonnesPage() {
               hint="Les fonctions existantes sont proposées pendant la saisie"
             />
           </div>
-          <BlocPicker
-            campements={campements}
-            blocs={blocs}
-            value={{ campement_id: form.campement_id, bloc_id: form.bloc_id }}
-            onChange={(v) => setForm((f) => ({ ...f, ...v }))}
+          <Select
+            label="Campement"
             required
-            errors={formErrors}
+            options={campements.filter((c) => c.actif || c.id === form.campement_id).map((c) => ({ value: c.id, label: c.nom }))}
+            placeholder="Choisir un campement"
+            value={form.campement_id}
+            onChange={(e) => setForm((f) => ({ ...f, campement_id: e.target.value }))}
+            error={formErrors.campement_id}
+            hint="La personne peut travailler sur tous les blocs de ce campement."
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Date d'embauche" required type="date" max={today()} value={form.date_embauche}
