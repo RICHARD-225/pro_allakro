@@ -55,9 +55,14 @@ class PersonnesTests(ApiTestCase):
         super().setUp()
         self.ids = self.referentiel()
 
-    def test_bloc_obligatoire_et_campement_deduit(self):
-        errors = self.post('personnes/', {'nom': 'Sans', 'prenom': 'Bloc', 'fonction_id': self.fonction.pk}, status=400)
-        self.assertIn('bloc_id', errors)
+    def test_campement_obligatoire_le_bloc_est_facultatif(self):
+        errors = self.post('personnes/', {'nom': 'Sans', 'prenom': 'Campement', 'fonction_id': self.fonction.pk}, status=400)
+        self.assertIn('campement_id', errors)
+        # Un ouvrier est enregistré au niveau du campement : il peut travailler sur tous ses blocs
+        personne = self.post('personnes/', {'nom': 'Ouvrier', 'prenom': 'Campement', 'fonction_id': self.fonction.pk,
+                                            'campement_id': self.campement['id']})
+        self.assertEqual((personne['bloc_code'], personne['campement_id']), (None, self.campement['id']))
+        # Un bloc donné (anciennes données) reste accepté : le campement est celui du bloc
         personne = self.post('personnes/', {'nom': 'Avec', 'prenom': 'Bloc', 'fonction_id': self.fonction.pk,
                                             'bloc_id': self.bloc2['id']})
         self.assertEqual((personne['bloc_code'], personne['campement_id'], personne['plantation_nom']),

@@ -95,7 +95,7 @@ class SuiviDesUtilisateursTests(ApiTestCase):
         self.referentiel()
 
     def creer_superviseur(self, **valeurs):
-        donnees = {'prenom': 'Awa', 'nom_personne': 'Coulibaly', 'bloc_id': self.bloc['id'], 'email': 'awa@test.ci',
+        donnees = {'prenom': 'Awa', 'nom_personne': 'Coulibaly', 'campements_ids': [self.campement['id']], 'email': 'awa@test.ci',
                    'role': 'superviseur', 'password': 'Superviseur@2026'}
         donnees.update(valeurs)
         return self.post('utilisateurs/', donnees)
@@ -104,16 +104,18 @@ class SuiviDesUtilisateursTests(ApiTestCase):
         compte = self.creer_superviseur()
         self.assertEqual(compte['role'], 'superviseur')
         personne = Personne.objects.get(pk=compte['personne_id'])
-        self.assertEqual((personne.nom, personne.prenom, personne.bloc_id), ('Coulibaly', 'Awa', self.bloc['id']))
+        # Sa fiche est rattachée au campement (pas à un bloc) et il en devient le responsable
+        self.assertEqual((personne.nom, personne.prenom, personne.bloc_id, personne.campement_id), ('Coulibaly', 'Awa', None, self.campement['id']))
+        self.assertEqual(self.get(f"campements/{self.campement['id']}/")['responsable_id'], personne.pk)
         self.assertEqual(Utilisateur.objects.get(pk=compte['id']).role.code, 'superviseur')
         # Il peut se connecter, mais n'accède pas à l'administration
         self.assertEqual(self.login('awa@test.ci', 'Superviseur@2026').status_code, 200)
         self.assertEqual(self.client.get('/api/v1/utilisateurs/').status_code, 403)
 
-    def test_creation_d_un_compte_exige_prenom_nom_bloc_et_mot_de_passe(self):
+    def test_creation_d_un_compte_exige_prenom_nom_et_mot_de_passe(self):
         erreurs = self.post('utilisateurs/', {'email': 'x@test.ci', 'role': 'superviseur', 'password': 'Superviseur@2026'}, status=400)
-        self.assertEqual({'prenom', 'nom_personne', 'bloc_id'} <= set(erreurs), True)
-        erreurs = self.post('utilisateurs/', {'prenom': 'A', 'nom_personne': 'B', 'bloc_id': self.bloc['id'], 'email': 'x@test.ci',
+        self.assertEqual({'prenom', 'nom_personne'} <= set(erreurs), True)
+        erreurs = self.post('utilisateurs/', {'prenom': 'A', 'nom_personne': 'B', 'email': 'x@test.ci',
                                               'role': 'superviseur'}, status=400)
         self.assertIn('password', erreurs)
 

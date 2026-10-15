@@ -4,12 +4,15 @@ import { Menu, Search, LogOut, ChevronDown, WifiOff, User, Settings } from 'luci
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS } from '@/constants';
 import NotificationsMenu from '@/components/layouts/NotificationsMenu';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { personnesService, blocsService, campementsService, depensesService, produitsService, travauxService } from '@/services';
 
 export default function Header({ onOpenMobileMenu }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [confirmerDeconnexion, setConfirmerDeconnexion] = useState(false);
+  const [deconnexionEnCours, setDeconnexionEnCours] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -109,6 +112,7 @@ export default function Header({ onOpenMobileMenu }) {
   }, [searchResults]);
 
   return (
+    <>
     <header className="app-header h-16 border-b border-forest-800/40 flex items-center justify-between gap-3 px-3 sm:px-4 lg:px-6 shrink-0 z-30 shadow-xs">
       {/* Left: mobile menu + search */}
       <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -214,7 +218,7 @@ export default function Header({ onOpenMobileMenu }) {
                   Paramètres du compte
                 </button>
                 <button
-                  onClick={async () => { await logout(); navigate('/login'); }}
+                  onClick={() => { setShowUserMenu(false); setConfirmerDeconnexion(true); }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-earth-700 hover:bg-earth-50 rounded-lg transition-colors"
                 >
                   <LogOut size={16} />
@@ -226,5 +230,19 @@ export default function Header({ onOpenMobileMenu }) {
         </div>
       </div>
     </header>
+      <ConfirmDialog
+        open={confirmerDeconnexion}
+        onClose={() => setConfirmerDeconnexion(false)}
+        title="Se déconnecter ?"
+        message="Vous devrez saisir à nouveau votre e-mail et votre mot de passe pour revenir dans l'application."
+        confirmLabel="Se déconnecter"
+        loading={deconnexionEnCours}
+        onConfirm={async () => {
+          setDeconnexionEnCours(true);
+          try { await logout(); } finally { setDeconnexionEnCours(false); setConfirmerDeconnexion(false); }
+          navigate('/login');
+        }}
+      />
+    </>
   );
 }

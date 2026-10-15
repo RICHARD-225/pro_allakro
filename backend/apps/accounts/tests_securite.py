@@ -328,18 +328,19 @@ class PerimetreParCampementTests(ApiTestCase):
         self.assertEqual(self.get(f'tableau-de-bord/?periode={HIER[:7]}')['kpis']['totalDepenses'], 3000.0)
 
     def test_superviseur_sans_campement_ne_voit_rien(self):
-        from apps.core.models import Personne
-        Personne.objects.filter(pk=self.superviseur.personne_id).update(bloc=None, campement=None)
+        from apps.core.models import Campement
+        # Il n'est plus responsable d'aucun campement : le Big Boss en devient responsable
+        Campement.objects.filter(pk=self.campement['id']).update(responsable_id=self.admin.personne_id)
         self.assertEqual(self.get('depenses/'), [])
         self.assertEqual(self.get('travaux/'), [])
         self.assertEqual(self.client.get('/api/v1/tableau-de-bord/').status_code, 403)
 
-    def test_un_superviseur_ne_peut_pas_se_deplacer_vers_un_autre_campement(self):
-        ma_fiche = self.superviseur.personne_id
-        refus = self.client.patch(f'/api/v1/personnes/{ma_fiche}/', {'bloc_id': self.bloc_b['id']}, format='json')
+    def test_un_superviseur_ne_peut_pas_deplacer_une_personne_vers_un_campement_qu_il_ne_gere_pas(self):
+        ouvrier = self.personnes[0]['id']
+        refus = self.client.patch(f'/api/v1/personnes/{ouvrier}/', {'campement_id': self.campement_b['id']}, format='json')
         self.assertEqual(refus.status_code, 403)
         from apps.core.models import Personne
-        self.assertEqual(Personne.objects.get(pk=ma_fiche).bloc_id, self.bloc['id'])
+        self.assertEqual(Personne.objects.get(pk=ouvrier).campement_id, self.campement['id'])
 
     # ---- Responsables de campements et droits du superviseur (13 octobre 2026) ----
 
@@ -347,18 +348,16 @@ class PerimetreParCampementTests(ApiTestCase):
         self.assertEqual(self.client.get('/api/v1/campements/responsables/').status_code, 403)  # superviseur
         self.login(self.admin.username)
         propose = {p['id'] for p in self.get('campements/responsables/')}
-        self.assertEqual(propose, {self.superviseur.personne_id})  # ni le Big Boss, ni les ouvriers sans compte
+        # Superviseurs et Big Boss (qui peut aussi être responsable) : jamais les ouvriers sans compte
+        self.assertEqual(propose, {self.superviseur.personne_id, self.admin.personne_id})
         # Une personne sans compte est refusée par l'API, même si l'interface ne la propose pas
         refus = self.client.post('/api/v1/campements/', {'nom': 'Camp C', 'plantation_id': self.plantation['id'], 'superficie': 1,
                                                           'responsable_id': self.personne_b['id']}, format='json')
         self.assertEqual(refus.status_code, 400)
         self.assertIn('responsable_id', refus.json())
-        refus = self.client.post('/api/v1/campements/', {'nom': 'Camp C', 'plantation_id': self.plantation['id'], 'superficie': 1,
-                                                          'responsable_id': self.admin.personne_id}, format='json')
-        self.assertEqual(refus.status_code, 400)  # le Big Boss n'est pas un responsable de campement
         # Un compte désactivé n'est plus proposé
         Utilisateur.objects.filter(pk=self.superviseur.pk).update(actif=False)
-        self.assertEqual(self.get('campements/responsables/'), [])
+        self.assertEqual({p['id'] for p in self.get('campements/responsables/')}, {self.admin.personne_id})
 
     def test_un_responsable_gere_plusieurs_campements(self):
         self.login(self.admin.username)
@@ -366,7 +365,7 @@ class PerimetreParCampementTests(ApiTestCase):
         c1 = self.post('campements/', {'nom': 'Camp C', 'plantation_id': self.plantation['id'], 'superficie': 0, 'responsable_id': responsable})
         c2 = self.post('campements/', {'nom': 'Camp D', 'plantation_id': self.plantation['id'], 'superficie': 0, 'responsable_id': responsable})
         ligne = [p for p in self.get('campements/responsables/') if p['id'] == responsable][0]
-        self.assertEqual(sorted(ligne['campements']), ['Camp C', 'Camp D'])
+        self.assertEqual(sorted(ligne['campements']), ['Camp A', 'Camp C', 'Camp D'])
         # Son périmètre = son campement d'affectation + les campements dont il est responsable (pas les autres)
         self.login(self.superviseur.username)
         self.assertEqual(self.ids('campements/'), {self.campement['id'], c1['id'], c2['id']})
@@ -387,8 +386,6 @@ class PerimetreParCampementTests(ApiTestCase):
             ('patch', f"campements/{self.campement['id']}/", {'nom': 'Renommé'}),
             ('delete', f"campements/{self.campement['id']}/", None),
             ('get', 'campements/responsables/', None),
-            ('post', 'blocs/', {'nom': 'Z', 'campement_id': self.campement['id'], 'superficie': 1, 'nombre_plantes': 10}),
-            ('patch', f"blocs/{self.bloc['id']}/", {'nom': 'Renommé'}),
             ('delete', f"blocs/{self.bloc['id']}/", None),
             ('post', 'types-travaux/', {'libelle': 'Nouvelle activité'}),
             ('post', 'categories-depenses/', {'libelle': 'Nouvelle catégorie'}),
@@ -408,5 +405,67 @@ class PerimetreParCampementTests(ApiTestCase):
         # Rien n'a changé
         self.login(self.admin.username)
         self.assertEqual(self.get(f"plantations/{self.plantation['id']}/")['nom'], self.plantation['nom'])
-        self.assertEqual(self.get(f"blocs/{self.bloc['id']}/")['nom'], self.bloc['nom'])
         self.assertEqual(Utilisateur.objects.get(pk=self.superviseur.pk).role.code, 'superviseur')
+
+    # ---- Exploitation : responsable obligatoire, blocs et ouvriers au niveau du campement (15 octobre 2026) ----
+
+    def test_un_campement_a_toujours_un_responsable(self):
+        self.login(self.admin.username)
+        donnees = {'nom': 'Camp Z', 'plantation_id': self.plantation['id'], 'superficie': 0}
+        self.assertIn('responsable_id', self.post('campements/', donnees, status=400))
+        # Une personne sans compte n'est pas un responsable valide
+        self.assertEqual(self.client.post('/api/v1/campements/', {**donnees, 'responsable_id': self.personne_b['id']}, format='json').status_code, 400)
+        # Le Big Boss peut l'être
+        cree = self.post('campements/', {**donnees, 'responsable_id': self.admin.personne_id})
+        self.assertEqual(cree['responsable_id'], self.admin.personne_id)
+        # On ne retire jamais le responsable : on en désigne un autre
+        self.assertEqual(self.client.patch(f"/api/v1/campements/{cree['id']}/", {'responsable_id': None}, format='json').status_code, 400)
+        self.assertEqual(self.patch(f"campements/{cree['id']}/", {'responsable_id': self.superviseur.personne_id})['responsable_id'],
+                         self.superviseur.personne_id)
+
+    def test_un_responsable_ne_peut_pas_etre_desactive_tant_qu_il_gere_un_campement(self):
+        self.login(self.admin.username)
+        refus = self.client.patch(f'/api/v1/utilisateurs/{self.superviseur.pk}/', {'actif': False}, format='json')
+        self.assertEqual(refus.status_code, 400)
+        self.assertIn('actif', refus.json())
+        refus = self.client.patch(f'/api/v1/personnes/{self.superviseur.personne_id}/', {'actif': False}, format='json')
+        self.assertEqual(refus.status_code, 400)
+        self.assertTrue(Utilisateur.objects.get(pk=self.superviseur.pk).actif)
+        # Après avoir désigné un remplaçant sur tous ses campements, c'est permis
+        self.patch(f"campements/{self.campement['id']}/", {'responsable_id': self.admin.personne_id})
+        self.patch(f'utilisateurs/{self.superviseur.pk}/', {'actif': False})
+        self.assertFalse(Utilisateur.objects.get(pk=self.superviseur.pk).actif)
+
+    def test_le_responsable_cree_des_blocs_dans_ses_campements_seulement(self):
+        cree = self.post('blocs/', {'nom': 'A3', 'campement_id': self.campement['id'], 'superficie': 5, 'nombre_plantes': 100})
+        self.assertEqual(self.patch(f"blocs/{cree['id']}/", {'nombre_plantes': 150})['nombre_plantes'], 150)
+        refus = self.client.post('/api/v1/blocs/', {'nom': 'B2', 'campement_id': self.campement_b['id'], 'superficie': 5,
+                                                     'nombre_plantes': 10}, format='json')
+        self.assertEqual(refus.status_code, 403)
+        self.assertEqual(self.client.delete(f"/api/v1/blocs/{cree['id']}/").status_code, 403)  # la suppression reste au Big Boss
+        self.login(self.admin.username)
+        self.assertEqual(len([b for b in self.get('blocs/') if b['campement_id'] == self.campement_b['id']]), 1)  # rien créé chez B
+
+    def test_le_responsable_enregistre_les_ouvriers_au_niveau_du_campement(self):
+        ouvrier = self.post('personnes/', {'nom': 'Nouveau', 'prenom': 'Ouvrier', 'telephone': '07 55 55 55 55',
+                                           'fonction_id': self.fonction.pk, 'campement_id': self.campement['id']})
+        self.assertEqual((ouvrier['bloc_id'], ouvrier['campement_id']), (None, self.campement['id']))
+        # Il travaille sur n'importe quel bloc du campement
+        for bloc in (self.bloc, self.bloc2):
+            self.creer_travail([ouvrier['id']], bloc_id=bloc['id'])
+        # Pas dans un campement qu'il ne gère pas
+        refus = self.client.post('/api/v1/personnes/', {'nom': 'Intrus', 'prenom': 'X', 'telephone': '07 66 66 66 66',
+                                                         'fonction_id': self.fonction.pk, 'campement_id': self.campement_b['id']}, format='json')
+        self.assertEqual(refus.status_code, 403)
+
+    def test_un_compte_superviseur_sans_campement_puis_on_lui_en_confie(self):
+        self.login(self.admin.username)
+        compte = self.post('utilisateurs/', {'prenom': 'Koffi', 'nom_personne': 'Attente', 'email': 'koffi@test.ci',
+                                             'role': 'superviseur', 'password': 'Superviseur@2026'})
+        self.login('koffi@test.ci', 'Superviseur@2026')
+        self.assertEqual(self.get('campements/'), [])
+        self.login(self.admin.username)
+        self.patch(f"utilisateurs/{compte['id']}/", {'campements_ids': [self.campement_b['id']]})
+        self.assertEqual(self.get(f"campements/{self.campement_b['id']}/")['responsable_id'], compte['personne_id'])
+        self.login('koffi@test.ci', 'Superviseur@2026')
+        self.assertEqual(self.ids('campements/'), {self.campement_b['id']})

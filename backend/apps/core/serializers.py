@@ -100,6 +100,24 @@ class CampementSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({'superficie': f"Inférieure à la superficie de ses blocs ({occupee} ha)."})
         return attrs
 
+    @staticmethod
+    def rattacher_fiche(campement):
+        """La fiche d'un responsable sans campement ni bloc suit le premier campement qu'on lui confie."""
+        responsable = campement.responsable
+        if responsable.bloc_id is None and responsable.campement_id is None:
+            responsable.campement_id = campement.pk
+            responsable.save(update_fields=['campement'])
+
+    def create(self, validated_data):
+        campement = super().create(validated_data)
+        self.rattacher_fiche(campement)
+        return campement
+
+    def update(self, instance, validated_data):
+        campement = super().update(instance, validated_data)
+        self.rattacher_fiche(campement)
+        return campement
+
 
 class BlocSerializer(serializers.ModelSerializer):
     campement_id = v.RelatedField(source='campement', queryset=Campement.objects.all())
