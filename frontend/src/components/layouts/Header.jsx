@@ -73,7 +73,7 @@ export default function Header({ onOpenMobileMenu }) {
         blocs.filter((block) => block.nom.toLocaleLowerCase('fr').includes(lower) || block.code.toLocaleLowerCase('fr').includes(lower))
           .slice(0, 3).forEach((block) => results.push({ type: 'Bloc', label: `${block.code} — ${block.nom}`, to: `/blocs/${block.id}` }));
         campements.filter((camp) => camp.nom.toLocaleLowerCase('fr').includes(lower))
-          .slice(0, 3).forEach((camp) => results.push({ type: 'Campement', label: camp.nom, to: '/campements' }));
+          .slice(0, 3).forEach((camp) => results.push({ type: 'Campement', label: camp.nom, to: `/campements/${camp.id}` }));
         depenses.filter((expense) => expense.designation.toLocaleLowerCase('fr').includes(lower))
           .slice(0, 3).forEach((expense) => results.push({ type: 'Dépense', label: expense.designation, to: '/depenses' }));
         produits.filter((product) => product.nom.toLocaleLowerCase('fr').includes(lower))

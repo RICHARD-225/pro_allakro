@@ -2,20 +2,15 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Leaf, Plus } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
-import AutoCodeInput from '@/components/AutoCodeInput';
+import BlocModal from '@/components/exploitation/BlocModal';
 import RowActions from '@/components/RowActions';
-import { DataTable, Badge, Button, ErrorState, Modal, Input, Select } from '@/components/ui';
+import { DataTable, Badge, Button, ErrorState, Select } from '@/components/ui';
 import { compterFiltres } from '@/components/ui/Filtres';
-import { useToast } from '@/contexts/ToastContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSuppression } from '@/hooks/useSuppression';
 import { blocsService, campementsService } from '@/services';
 import { formatNumber } from '@/utils/format';
-import { showServerErrors } from '@/utils/errors';
 import { ROLE } from '@/constants';
-
-const EMPTY_FORM = { nom: '', campement_id: '', superficie: '', nombre_plantes: '', actif: true };
-const ENTIER_POSITIF = /^\d+$/;
 
 export default function BlocsPage() {
   const navigate = useNavigate();
@@ -27,11 +22,6 @@ export default function BlocsPage() {
   const [error, setError] = useState(false);
   const [filterCampement, setFilterCampement] = useState('');
   const [edition, setEdition] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [formErrors, setFormErrors] = useState({});
-  const [saving, setSaving] = useState(false);
-  const toast = useToast();
-  const enModification = edition && edition !== 'nouveau';
 
   const { demander, dialogue } = useSuppression({
     supprimer: (row) => blocsService.remove(row.id),
@@ -52,51 +42,7 @@ export default function BlocsPage() {
 
   const filtered = data.filter((b) => !filterCampement || b.campement_id === filterCampement);
 
-  const ouvrir = (bloc = null) => {
-    setForm(bloc
-      ? { nom: bloc.nom, campement_id: bloc.campement_id, superficie: String(bloc.superficie ?? ''),
-        nombre_plantes: String(bloc.nombre_plantes ?? ''), actif: bloc.actif }
-      : EMPTY_FORM);
-    setFormErrors({});
-    setEdition(bloc || 'nouveau');
-  };
-
-  const validate = () => {
-    const errs = {};
-    if (!form.nom.trim()) errs.nom = 'Le nom est obligatoire';
-    if (!form.campement_id) errs.campement_id = 'Le campement est obligatoire';
-    if (form.superficie && !(Number(form.superficie) >= 0)) errs.superficie = 'La superficie doit être un nombre positif';
-    if (form.nombre_plantes === '') errs.nombre_plantes = 'Le nombre de plantes est obligatoire';
-    else if (!ENTIER_POSITIF.test(String(form.nombre_plantes).trim())) errs.nombre_plantes = 'Saisissez un nombre entier positif';
-    setFormErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    if (!validate()) return;
-    setSaving(true);
-    const payload = {
-      nom: form.nom.trim(),
-      campement_id: form.campement_id,
-      superficie: Number(form.superficie) || 0,
-      nombre_plantes: Number(form.nombre_plantes),
-      actif: form.actif,
-    };
-    try {
-      const item = enModification ? await blocsService.update(edition.id, payload) : await blocsService.create(payload);
-      setData((d) => (enModification ? d.map((x) => (x.id === item.id ? item : x)) : [item, ...d]));
-      setEdition(null);
-      toast.success(enModification ? `Bloc ${item.code} modifié` : `Bloc ${item.code} ajouté avec succès`);
-    } catch (err) {
-      showServerErrors(err, { setFormErrors, toast });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Densité indicative (plantes par hectare) pour repérer une erreur de saisie
-  const densite = Number(form.superficie) > 0 && ENTIER_POSITIF.test(String(form.nombre_plantes).trim())
-    ? Math.round(Number(form.nombre_plantes) / Number(form.superficie)) : null;
+  const ouvrir = (bloc = null) => setEdition(bloc || 'nouveau');
 
   const columns = [
     { key: 'nom', header: 'Bloc', sortable: true, render: (row) => (
@@ -150,75 +96,13 @@ export default function BlocsPage() {
       />
       {dialogue}
 
-      <Modal
+      <BlocModal
         open={!!edition}
         onClose={() => setEdition(null)}
-        title={enModification ? `Modifier ${edition.code}` : 'Nouveau bloc'}
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setEdition(null)}>Annuler</Button>
-            <Button onClick={handleSubmit} loading={saving}>Enregistrer</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {enModification
-              ? <Input label="Code" value={edition.code} disabled readOnly />
-              : <AutoCodeInput service={blocsService} />}
-            <Input
-              label="Nom"
-              required
-              placeholder="Ex: Bloc F1"
-              value={form.nom}
-              onChange={(e) => setForm({ ...form, nom: e.target.value })}
-              error={formErrors.nom}
-            />
-          </div>
-          <Select
-            label="Campement"
-            required
-            options={campements.filter((c) => c.actif || c.id === form.campement_id)
-              .map((c) => ({ value: c.id, label: `${c.nom} (${formatNumber(c.superficie)} ha)` }))}
-            placeholder="Choisir un campement"
-            value={form.campement_id}
-            onChange={(e) => setForm({ ...form, campement_id: e.target.value })}
-            error={formErrors.campement_id}
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Input
-              label="Superficie (ha)"
-              type="number"
-              min="0"
-              step="any"
-              placeholder="0"
-              value={form.superficie}
-              onChange={(e) => setForm({ ...form, superficie: e.target.value })}
-              error={formErrors.superficie}
-            />
-            <Input
-              label="Nombre de plantes"
-              required
-              type="number"
-              min="0"
-              step="1"
-              inputMode="numeric"
-              placeholder="Ex: 6435"
-              value={form.nombre_plantes}
-              onChange={(e) => setForm({ ...form, nombre_plantes: e.target.value })}
-              error={formErrors.nombre_plantes}
-              hint={densite !== null ? `Soit environ ${formatNumber(densite)} plantes par hectare` : 'Plantes présentes sur la superficie du bloc'}
-            />
-          </div>
-          {enModification && (
-            <label className="flex items-center gap-2 text-sm text-ink-700">
-              <input type="checkbox" checked={form.actif} onChange={(e) => setForm({ ...form, actif: e.target.checked })}
-                className="h-4 w-4 rounded-sm border-ink-300 text-forest-600" />
-              Bloc actif
-            </label>
-          )}
-        </div>
-      </Modal>
+        bloc={edition && edition !== 'nouveau' ? edition : null}
+        campements={campements}
+        onEnregistre={(item, modification) => setData((d) => (modification ? d.map((x) => (x.id === item.id ? item : x)) : [item, ...d]))}
+      />
     </div>
   );
 }

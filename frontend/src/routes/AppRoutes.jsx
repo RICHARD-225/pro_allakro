@@ -14,9 +14,9 @@ const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const MotDePasseOubliePage = lazy(() => import('@/pages/MotDePasseOubliePage'));
 const ReinitialiserMotDePassePage = lazy(() => import('@/pages/ReinitialiserMotDePassePage'));
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
-const PlantationsPage = lazy(() => import('@/pages/PlantationsPage'));
-const CampementsPage = lazy(() => import('@/pages/CampementsPage'));
-const BlocsPage = lazy(() => import('@/pages/BlocsPage'));
+const ExploitationPage = lazy(() => import('@/pages/ExploitationPage'));
+const PlantationDetailPage = lazy(() => import('@/pages/PlantationDetailPage'));
+const CampementDetailPage = lazy(() => import('@/pages/CampementDetailPage'));
 const BlocDetailPage = lazy(() => import('@/pages/BlocDetailPage'));
 const PersonnesPage = lazy(() => import('@/pages/PersonnesPage'));
 const TravauxPage = lazy(() => import('@/pages/TravauxPage'));
@@ -70,9 +70,13 @@ export default function AppRoutes() {
               }
             >
               <Route path="/dashboard" element={<Suspense fallback={<PageFallback />}><DashboardPage /></Suspense>} />
-              <Route path="/plantations" element={<Suspense fallback={<PageFallback />}><PlantationsPage /></Suspense>} />
-              <Route path="/campements" element={<Suspense fallback={<PageFallback />}><CampementsPage /></Suspense>} />
-              <Route path="/blocs" element={<Suspense fallback={<PageFallback />}><BlocsPage /></Suspense>} />
+              {/* Toute la structure de l'exploitation dans une seule page (onglets) ; les anciennes adresses y renvoient */}
+              <Route path="/exploitation" element={<Suspense fallback={<PageFallback />}><ExploitationPage /></Suspense>} />
+              <Route path="/plantations" element={<Navigate to="/exploitation?onglet=plantations" replace />} />
+              <Route path="/campements" element={<Navigate to="/exploitation?onglet=campements" replace />} />
+              <Route path="/blocs" element={<Navigate to="/exploitation?onglet=blocs" replace />} />
+              <Route path="/plantations/:id" element={<Suspense fallback={<PageFallback />}><PlantationDetailPage /></Suspense>} />
+              <Route path="/campements/:id" element={<Suspense fallback={<PageFallback />}><CampementDetailPage /></Suspense>} />
               <Route path="/blocs/:id" element={<Suspense fallback={<PageFallback />}><BlocDetailPage /></Suspense>} />
               <Route path="/personnes" element={<Suspense fallback={<PageFallback />}><PersonnesPage /></Suspense>} />
               {/* Les équipes se créent avec les travaux */}

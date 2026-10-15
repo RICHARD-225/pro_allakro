@@ -1,31 +1,24 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sprout, Plus } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
-import AutoCodeInput from '@/components/AutoCodeInput';
+import PlantationModal from '@/components/exploitation/PlantationModal';
 import RowActions from '@/components/RowActions';
-import { DataTable, Badge, Button, ErrorState, Modal, Input } from '@/components/ui';
-import { useToast } from '@/contexts/ToastContext';
+import { DataTable, Badge, Button, ErrorState } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSuppression } from '@/hooks/useSuppression';
 import { plantationsService } from '@/services';
 import { formatDate, formatNumber } from '@/utils/format';
-import { showServerErrors } from '@/utils/errors';
 import { ROLE } from '@/constants';
 
-const EMPTY_FORM = { nom: '', localisation: '', superficie: '', actif: true };
-
 export default function PlantationsPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const isBoss = user?.role === ROLE.BIG_BOSS;
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [edition, setEdition] = useState(null); // null : fermé · 'nouveau' · plantation modifiée
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [formErrors, setFormErrors] = useState({});
-  const [saving, setSaving] = useState(false);
-  const toast = useToast();
-  const enModification = edition && edition !== 'nouveau';
 
   const { demander, dialogue } = useSuppression({
     supprimer: (row) => plantationsService.remove(row.id),
@@ -41,44 +34,7 @@ export default function PlantationsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const ouvrir = (plantation = null) => {
-    setForm(plantation
-      ? { nom: plantation.nom, localisation: plantation.localisation || '', superficie: String(plantation.superficie ?? ''), actif: plantation.actif }
-      : EMPTY_FORM);
-    setFormErrors({});
-    setEdition(plantation || 'nouveau');
-  };
-
-  const validate = () => {
-    const errs = {};
-    if (!form.nom.trim()) errs.nom = 'Le nom est obligatoire';
-    if (form.superficie && !(Number(form.superficie) >= 0)) errs.superficie = 'La superficie doit être un nombre positif';
-    setFormErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    if (!validate()) return;
-    setSaving(true);
-    const payload = {
-      nom: form.nom.trim(),
-      localisation: form.localisation.trim() || 'Côte d\'Ivoire',
-      superficie: Number(form.superficie) || 0,
-      actif: form.actif,
-    };
-    try {
-      const item = enModification
-        ? await plantationsService.update(edition.id, payload)
-        : await plantationsService.create(payload);
-      setData((d) => (enModification ? d.map((x) => (x.id === item.id ? item : x)) : [item, ...d]));
-      setEdition(null);
-      toast.success(enModification ? `Plantation ${item.code} modifiée` : `Plantation ${item.code} ajoutée avec succès`);
-    } catch (err) {
-      showServerErrors(err, { setFormErrors, toast });
-    } finally {
-      setSaving(false);
-    }
-  };
+  const ouvrir = (plantation = null) => setEdition(plantation || 'nouveau');
 
   const columns = [
     { key: 'nom', header: 'Plantation', sortable: true, render: (row) => (
@@ -94,7 +50,10 @@ export default function PlantationsPage() {
     { key: 'created_at', header: 'Créée le', sortable: true, mobile: false, render: (row) => <span className="tabular-nums">{formatDate(row.created_at)}</span> },
   ];
 
-  const ActionsCell = ({ row }) => (isBoss ? <RowActions onEdit={() => ouvrir(row)} onDelete={() => demander(row)} /> : null);
+  const ActionsCell = ({ row }) => (
+    <RowActions onView={() => navigate(`/plantations/${row.id}`)} onEdit={isBoss ? () => ouvrir(row) : undefined}
+      onDelete={isBoss ? () => demander(row) : undefined} />
+  );
 
   if (error) return <ErrorState onRetry={() => window.location.reload()} />;
 
@@ -112,63 +71,18 @@ export default function PlantationsPage() {
         loading={loading}
         searchPlaceholder="Rechercher une plantation..."
         searchKeys={['code', 'nom', 'localisation']}
-        onRowClick={isBoss ? (row) => ouvrir(row) : undefined}
+        onRowClick={(row) => navigate(`/plantations/${row.id}`)}
         actions={ActionsCell}
         emptyAction={isBoss ? <Button size="sm" onClick={() => ouvrir()}><Plus size={14} /> Nouvelle plantation</Button> : undefined}
       />
       {dialogue}
 
-      <Modal
+      <PlantationModal
         open={!!edition}
         onClose={() => setEdition(null)}
-        title={enModification ? `Modifier ${edition.code}` : 'Nouvelle plantation'}
-        footer={
-          <>
-            <Button variant="outline" onClick={() => setEdition(null)}>Annuler</Button>
-            <Button onClick={handleSubmit} loading={saving}>Enregistrer</Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {enModification
-              ? <Input label="Code" value={edition.code} disabled readOnly />
-              : <AutoCodeInput service={plantationsService} />}
-            <Input
-              label="Nom"
-              required
-              placeholder="Ex: ALLAKRO Est"
-              value={form.nom}
-              onChange={(e) => setForm({ ...form, nom: e.target.value })}
-              error={formErrors.nom}
-            />
-          </div>
-          <Input
-            label="Localisation"
-            placeholder="Ex: Côte d'Ivoire"
-            value={form.localisation}
-            onChange={(e) => setForm({ ...form, localisation: e.target.value })}
-            error={formErrors.localisation}
-          />
-          <Input
-            label="Superficie (ha)"
-            type="number"
-            min="0"
-            step="any"
-            placeholder="0"
-            value={form.superficie}
-            onChange={(e) => setForm({ ...form, superficie: e.target.value })}
-            error={formErrors.superficie}
-          />
-          {enModification && (
-            <label className="flex items-center gap-2 text-sm text-ink-700">
-              <input type="checkbox" checked={form.actif} onChange={(e) => setForm({ ...form, actif: e.target.checked })}
-                className="h-4 w-4 rounded-sm border-ink-300 text-forest-600" />
-              Plantation active
-            </label>
-          )}
-        </div>
-      </Modal>
+        plantation={edition && edition !== 'nouveau' ? edition : null}
+        onEnregistre={(item, modification) => setData((d) => (modification ? d.map((x) => (x.id === item.id ? item : x)) : [item, ...d]))}
+      />
     </div>
   );
 }

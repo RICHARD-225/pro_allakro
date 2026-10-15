@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   LayoutDashboard, Trees, Users, HardHat, Wallet,
   Package, ShoppingBag, FileBarChart, Settings, ChevronLeft, ChevronDown,
-  Sprout, Leaf, TreePine, UserCircle, ScrollText,
+  Sprout, UserCircle, ScrollText,
   Tags, ListChecks, CreditCard, History, UserCog,
 } from 'lucide-react';
 import { APP_NAME, APP_TAGLINE, ROLE } from '@/constants';
@@ -15,15 +15,8 @@ const HOME = { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard };
 // Sections repliables : seule la section de la page courante est ouverte par défaut.
 // Une entrée avec `to` (sans `items`) est un lien direct.
 const NAV_SECTIONS = [
-  {
-    title: 'Exploitation',
-    icon: Sprout,
-    items: [
-      { to: '/plantations', label: 'Plantations', icon: Sprout },
-      { to: '/campements', label: 'Campements', icon: TreePine },
-      { to: '/blocs', label: 'Blocs / Parcelles', icon: Leaf },
-    ],
-  },
+  // Plantations, campements et blocs : une seule page (vue d'ensemble, listes et fiches) ; `aussi` = adresses qui gardent l'entrée active
+  { title: 'Exploitation', to: '/exploitation', icon: Sprout, aussi: ['/plantations', '/campements', '/blocs'] },
   // Les équipes se créent avec les travaux
   { title: 'Personnes', to: '/personnes', icon: Users },
   {
@@ -77,12 +70,14 @@ const isInSection = (section, pathname) => (section.items || []).some((i) => pat
 
 function NavItem({ item, collapsed, onClick, nested = false }) {
   const Icon = item.icon;
+  const { pathname } = useLocation();
+  const aussiActif = (item.aussi || []).some((p) => pathname === p || pathname.startsWith(`${p}/`));
   return (
     <NavLink
       to={item.to}
       onClick={onClick}
       className={({ isActive }) =>
-        `side-item ${isActive ? 'side-item-active' : ''} ${collapsed ? 'justify-center px-2' : ''} ${nested && !collapsed ? 'py-1.5 pl-9' : ''}`
+        `side-item ${isActive || aussiActif ? 'side-item-active' : ''} ${collapsed ? 'justify-center px-2' : ''} ${nested && !collapsed ? 'py-1.5 pl-9' : ''}`
       }
       title={collapsed ? item.label : undefined}
       aria-label={item.label}
@@ -140,7 +135,7 @@ export default function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onClo
         {sections.map((section) => {
           const SectionIcon = section.icon;
           if (section.to) {
-            return <NavItem key={section.to} item={{ to: section.to, label: section.title, icon: section.icon }} collapsed={collapsed} onClick={onCloseMobile} />;
+            return <NavItem key={section.to} item={{ to: section.to, label: section.title, icon: section.icon, aussi: section.aussi }} collapsed={collapsed} onClick={onCloseMobile} />;
           }
           const open = openSections.has(section.title);
           const active = isInSection(section, pathname);

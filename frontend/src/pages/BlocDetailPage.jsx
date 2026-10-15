@@ -75,7 +75,7 @@ export default function BlocDetailPage() {
     );
   }
 
-  if (!bloc) return <ErrorState message="Bloc introuvable" onRetry={() => navigate('/blocs')} />;
+  if (!bloc) return <ErrorState message="Bloc introuvable" onRetry={() => navigate('/exploitation?onglet=blocs')} />;
 
   const totalDepenses = depenses.reduce((s, d) => s + d.montant_total, 0);
   const actives = personnes.filter((p) => p.actif).length;
@@ -83,7 +83,7 @@ export default function BlocDetailPage() {
   return (
     <div className="space-y-4 sm:space-y-5">
       <div className="flex items-center gap-3">
-        <Link to="/blocs" className="p-2 rounded-lg text-ink-500 hover:bg-ink-50 transition-colors" aria-label="Retour">
+        <Link to="/exploitation?onglet=blocs" className="p-2 rounded-lg text-ink-500 hover:bg-ink-50 transition-colors" aria-label="Retour">
           <ArrowLeft size={18} />
         </Link>
         <div className="min-w-0 flex-1">
