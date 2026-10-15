@@ -179,8 +179,9 @@ class UtilisateurSerializer(serializers.ModelSerializer):
             # Un responsable n'a pas besoin d'être rattaché à un bloc : sa fiche suit ses campements (ou aucun pour l'instant)
             personne = PersonneSerializer(data=donnees, context={**self.context, 'sans_campement': True})
             if not personne.is_valid():
-                raise serializers.ValidationError({
-                    'prenom' if 'prenom' in personne.errors else 'nom_personne': next(iter(personne.errors.values()))})
+                # Chaque erreur de la fiche du personnel s'affiche sous SON champ du formulaire de compte
+                champs = {'nom': 'nom_personne', 'prenom': 'prenom', 'telephone': 'telephone', 'campement_id': 'campements_ids'}
+                raise serializers.ValidationError({champs.get(champ, 'nom_personne'): message for champ, message in personne.errors.items()})
             validated_data['personne'] = personne.save()
         compte = super().create(validated_data)
         self.confier_campements(compte.personne, campements_ids)

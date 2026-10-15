@@ -23,7 +23,10 @@ export default function MainLayout() {
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-[1600px] mx-auto px-4 lg:px-6 pt-4 sm:pt-6 pb-24 lg:pb-6">
             <ErrorBoundary resetKey={location.pathname}>
-              <Outlet />
+              {/* La clé relance l'animation d'entrée à chaque changement de page (pas à chaque changement d'onglet) */}
+              <div key={location.pathname} className="page-entree">
+                <Outlet />
+              </div>
             </ErrorBoundary>
           </div>
         </main>

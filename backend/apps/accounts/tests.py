@@ -134,3 +134,12 @@ class SuiviDesUtilisateursTests(ApiTestCase):
         # Réservé au Big Boss
         self.login('awa@test.ci', 'Superviseur@2026')
         self.assertEqual(self.client.get(f"/api/v1/utilisateurs/{compte['id']}/activite/").status_code, 403)
+
+    def test_une_erreur_de_fiche_s_affiche_sous_son_champ(self):
+        """Un téléphone déjà attribué est signalé sur le champ téléphone (pas sur le nom)."""
+        erreurs = self.post('utilisateurs/', {'prenom': 'Zoe', 'nom_personne': 'Nouvelle', 'telephone': '07 00 00 00 01', 'email': 'zoe@test.ci',
+                                              'role': 'superviseur', 'password': 'Superviseur@2026'}, status=400)
+        self.assertEqual(set(erreurs), {'telephone'})
+        erreurs = self.post('utilisateurs/', {'prenom': 'P', 'nom_personne': 'Nom0', 'email': 'doublon@test.ci',
+                                              'role': 'superviseur', 'password': 'Superviseur@2026'}, status=400)
+        self.assertIn('nom_personne', erreurs)

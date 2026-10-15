@@ -31,7 +31,8 @@ export default function Button({
     <button
       type={type}
       disabled={disabled || loading}
-      className={`btn ${VARIANTS[variant] || VARIANTS.primary} ${SIZES[size] || SIZES.md} ${className}`}
+      className={`btn ${loading ? 'btn-chargement' : ''} ${VARIANTS[variant] || VARIANTS.primary} ${SIZES[size] || SIZES.md} ${className}`}
+      aria-busy={loading || undefined}
       {...props}
     >
       {loading && <Loader2 size={size === 'sm' ? 14 : 16} className="animate-spin" />}

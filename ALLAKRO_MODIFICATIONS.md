@@ -601,3 +601,11 @@ Demande : régler tous les problèmes de sécurité de l'audit et les améliorat
 
 ### 14.8 État de la branche
 - Branche `exploitation` poussée sur GitHub ; **`main` et le site de test Render ne sont pas modifiés** tant qu'elle n'est pas fusionnée. Avant fusion : sauvegarder la base locale, puis `manage.py migrate` (reprise `core.0009`) et redémarrer les serveurs ; après fusion, Render migre seul au redémarrage (voir 14.6).
+
+### 14.9 Animations de chargement et corrections (15 octobre 2026, suite)
+- **Barre de progression** en haut de l'écran (`components/ChargementGlobal.jsx`, suivi `utils/chargement.js`) : elle apparaît quand une requête à l'API ou le chargement d'une page dépasse **250 ms**, défile en continu, se remplit puis s'efface à la fin ; une opération rapide n'affiche rien (pas de clignotement). Tous les appels de `api/client.js` sont suivis (y compris les téléchargements d'Excel / PDF).
+- **Entrée animée des pages** : le contenu apparaît en fondu en glissant légèrement, bloc après bloc (`page-entree`), à chaque changement de page ; les animations sont réduites pour les personnes qui le demandent au système.
+- **Bouton dont l'action est en cours** (`loading`) : fine barre qui défile en bas du bouton, en plus du cercle qui tourne.
+- **Erreur de création d'un responsable** : un téléphone déjà attribué s'affiche maintenant **sous le champ Téléphone** (il s'affichait sous « Nom »). Le numéro refusé appartient réellement à une autre personne : pour faire d'une personne déjà enregistrée un responsable, créer son compte depuis Administration > Utilisateurs en la rattachant (« Rattacher à une personne déjà enregistrée »).
+- Vérifié : `outils_tests/verif_chargement.mjs` (6 vérifications : repos, barre sur requête lente, fin, entrée animée, bouton, erreur sous le bon champ), test de bout en bout **202/202** sur le build de production, 161 tests backend + 1 nouveau test (erreur de fiche sous son champ).
+- **Limite honnête** : la barre est « indéterminée » (elle indique qu'une opération est en cours, pas son pourcentage réel) : le serveur ne connaît pas l'avancement d'une requête. Les liens du réseau local (adresse IP) doivent être déclarés dans `CORS_ALLOWED_ORIGINS` du `.env` (fait pour 10.10.11.177).

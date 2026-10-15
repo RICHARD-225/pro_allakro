@@ -5,6 +5,8 @@ import { ToastProvider } from '@/contexts/ToastContext';
 import { FilterProvider } from '@/contexts/FilterContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import ProtectedRoute from './ProtectedRoute';
+import ChargementGlobal from '@/components/ChargementGlobal';
+import { demarrerChargement } from '@/utils/chargement';
 import ReserveBigBoss from './ReserveBigBoss';
 import MainLayout from '@/components/layouts/MainLayout';
 import AuthLayout from '@/components/layouts/AuthLayout';
@@ -33,8 +35,10 @@ const TypesTravauxPage = lazy(() => import('@/pages/TypesTravauxPage'));
 const CategoriesDepensesPage = lazy(() => import('@/pages/CategoriesDepensesPage'));
 
 function PageFallback() {
+  // Le chargement d'une page (code téléchargé à la demande) fait avancer la barre de progression du haut de l'écran
+  useEffect(() => demarrerChargement(), []);
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 page-entree">
       <SkeletonCard />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <SkeletonCard />
@@ -53,6 +57,7 @@ export default function AppRoutes() {
         <AuthProvider>
           <ToastProvider>
             <FilterProvider>
+              <ChargementGlobal />
               <Routes>
             {/* Auth */}
             <Route element={<AuthLayout />}>

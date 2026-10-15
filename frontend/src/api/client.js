@@ -2,6 +2,8 @@
 // - Les jetons JWT sont dans des cookies httpOnly, gérés par le navigateur (credentials: 'include').
 // - Un 401 déclenche un rafraîchissement automatique de la session puis rejoue la requête une fois.
 // - Les erreurs de validation du serveur sont exposées champ par champ (ApiError.fields).
+import { demarrerChargement } from '@/utils/chargement';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 // Requêtes qui ne doivent pas déclencher de rafraîchissement de session
@@ -170,12 +172,18 @@ async function download(path, params, retry = true) {
   return filename;
 }
 
+// Chaque appel est suivi : la barre de progression du haut de l'écran apparaît s'il dure plus de 250 ms
+const suivi = (promesse) => {
+  const fin = demarrerChargement();
+  return promesse.finally(fin);
+};
+
 export const api = {
-  get: (path, params) => request(path, { params }),
-  post: (path, data) => request(path, { method: 'POST', body: data ?? {} }),
-  patch: (path, data) => request(path, { method: 'PATCH', body: data }),
-  delete: (path) => request(path, { method: 'DELETE' }),
-  download,
+  get: (path, params) => suivi(request(path, { params })),
+  post: (path, data) => suivi(request(path, { method: 'POST', body: data ?? {} })),
+  patch: (path, data) => suivi(request(path, { method: 'PATCH', body: data })),
+  delete: (path) => suivi(request(path, { method: 'DELETE' })),
+  download: (path, params) => suivi(download(path, params)),
 };
 
 export default api;
