@@ -41,7 +41,7 @@ export default function CampementsPage() {
     { key: 'nom', header: 'Campement', sortable: true, render: (row) => (
       <span>
         <span className="font-medium text-ink-800">{row.nom}</span>
-        <span className="block text-xs font-normal text-ink-500"><span className="tabular-nums text-forest-700">{row.code}</span> · {row.plantation_nom}</span>
+        <span className="block text-xs font-normal text-ink-500"><span className="tabular-nums text-forest-700">{row.code}</span> · {row.plantation_nom}{row.localisation ? ` · ${row.localisation}` : ''}</span>
       </span>
     ) },
     { key: 'superficie', header: 'Superficie', sortable: true, render: (row) => <span className="tabular-nums">{formatNumber(row.superficie)} ha</span> },

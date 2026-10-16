@@ -108,7 +108,7 @@ class LoginView(LimitationDebitMixin, APIView):
             enregistrer_tentative(username, adresse_ip, reussie=False)
             evenement(request, f'Échec de connexion pour {username[:60]}')
             if delai_avant_tentative(username, adresse_ip) and user is not None:
-                # Le blocage vient de s'enclencher : le Big Boss est prévenu (une alerte par compte et par heure)
+                # Le blocage vient de s'enclencher : le Super admin est prévenu (une alerte par compte et par heure)
                 notifications.notifier_big_boss('securite', f'Connexion bloquée : {user.username}',
                                                 'Trop d\'échecs de mot de passe. Le compte peut être débloqué depuis Utilisateurs.', '/utilisateurs',
                                                 f'blocage:{user.pk}:{timezone.now():%Y%m%d%H}')
@@ -297,7 +297,7 @@ class UtilisateurViewSet(BaseViewSet):
 
     @action(detail=True, methods=['get'])
     def activite(self, request, pk=None):
-        """Suivi d'un utilisateur par le Big Boss : connexions, actions enregistrées au journal et les plus récentes."""
+        """Suivi d'un utilisateur par le Super admin : connexions, actions enregistrées au journal et les plus récentes."""
         compte = self.get_object()
         actions = Journal.objects.filter(utilisateur=compte)
         hors_connexion = actions.exclude(action__in=['Connexion', 'Déconnexion'])

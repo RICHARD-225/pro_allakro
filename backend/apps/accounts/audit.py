@@ -55,7 +55,7 @@ def log_action(request, action, entite, objet=None, details=''):
 class BaseViewSet(viewsets.ModelViewSet):
     """
     ViewSet de base :
-    - authentification obligatoire ; certaines actions réservées au Big Boss (`big_boss_actions`)
+    - authentification obligatoire ; certaines actions réservées au Super admin (`big_boss_actions`)
     - journal d'audit automatique (création / modification / suppression)
     - filtres simples par paramètres d'URL (`filter_map`) et par période (`periode_field`) :
       `periode=AAAA-MM`, ou `date_debut=AAAA-MM-JJ` et/ou `date_fin=AAAA-MM-JJ` (bornes incluses)
@@ -72,7 +72,7 @@ class BaseViewSet(viewsets.ModelViewSet):
     # À écrire explicitement : un annotate() fait perdre le Meta.ordering du modèle.
     ordre_defaut = ('-id',)
     # Périmètre d'un superviseur : chemin ORM vers l'identifiant du campement (None = donnée commune à tous les comptes).
-    # Le Big Boss voit toute l'exploitation ; un superviseur ne voit et ne modifie que les données de son campement.
+    # Le Super admin voit toute l'exploitation ; un superviseur ne voit et ne modifie que les données de son campement.
     perimetre_lookup = None
     # Liste paginée côté serveur (voir `list`) : champs texte de la recherche (`q`), clés de tri acceptées (`ordering`) et
     # agrégats de la route `totaux/` (indicateurs de la page, calculés sur TOUTES les lignes filtrées, pas sur la page affichée)

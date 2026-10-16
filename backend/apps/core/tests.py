@@ -23,7 +23,7 @@ class ExploitationTests(ApiTestCase):
 
     def test_nom_de_bloc_unique_dans_le_campement(self):
         self.referentiel()
-        errors = self.post('blocs/', {'nom': 'a1', 'campement_id': self.campement['id'], 'nombre_plantes': 1}, status=400)
+        errors = self.post('blocs/', {'nom': 'a1', 'campement_id': self.campement['id'], 'superficie': 1, 'nombre_plantes': 1}, status=400)
         self.assertIn('nom', errors)
 
     def test_nombre_de_plantes_obligatoire_valide_et_modifiable(self):
@@ -36,6 +36,20 @@ class ExploitationTests(ApiTestCase):
         self.assertEqual(bloc['nombre_plantes'], 1430)
         self.assertEqual(self.patch(f"blocs/{bloc['id']}/", {'nombre_plantes': 1500})['nombre_plantes'], 1500)
         self.assertEqual(next(b for b in self.get('blocs/') if b['id'] == bloc['id'])['nombre_plantes'], 1500)
+
+    def test_superficie_facultative_sauf_pour_les_blocs_et_localisation(self):
+        self.referentiel()
+        plantation = self.post('plantations/', {'nom': 'Sans surface'})
+        self.assertEqual(float(plantation['superficie']), 0)
+        campement = self.post('campements/', {'nom': 'Camp libre', 'plantation_id': plantation['id'],
+                                              'responsable_id': self.admin.personne_id, 'localisation': 'Route de Daloa'})
+        self.assertEqual(campement['localisation'], 'Route de Daloa')
+        base = {'nom': 'B9', 'campement_id': campement['id'], 'nombre_plantes': 10}
+        self.assertIn('superficie', self.post('blocs/', base, status=400))
+        self.assertIn('superficie', self.post('blocs/', {**base, 'superficie': 0}, status=400))
+        bloc = self.post('blocs/', {**base, 'superficie': 5, 'localisation': 'Secteur nord'})
+        self.assertEqual(bloc['localisation'], 'Secteur nord')
+        self.assertEqual(next(b for b in self.get('blocs/') if b['id'] == bloc['id'])['localisation'], 'Secteur nord')
 
     def test_modifier_et_supprimer_une_plantation(self):
         plantation = self.post('plantations/', {'nom': 'Sud', 'superficie': 10})

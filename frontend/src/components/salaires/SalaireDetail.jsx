@@ -15,7 +15,7 @@ function Ligne({ label, children }) {
 /**
  * Fiche d'une rémunération : travail, équipe, situation de chaque membre (payé via le chef…) et paiements avec reçus.
  * Une rémunération ne se modifie pas (elle vient du travail) : la fiche propose « Payer » et, pour chaque paiement,
- * l'aperçu du reçu, la correction et (Big Boss) la suppression.
+ * l'aperçu du reçu, la correction et (Super admin) la suppression.
  * onPayer : action principale ; onApercu(paiement) : aperçu du reçu.
  */
 export default function SalaireDetail({ salaire, isBoss, onClose, onPayer, onApercu, onModifierPaiement, onSupprimerPaiement, onAnnulerPaiement, onReactiverPaiement }) {

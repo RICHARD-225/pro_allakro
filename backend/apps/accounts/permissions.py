@@ -2,7 +2,7 @@ from rest_framework.permissions import BasePermission
 
 
 class IsBigBoss(BasePermission):
-    message = "Action réservée au Big Boss."
+    message = "Action réservée au Super admin."
 
     def has_permission(self, request, view):
         user = request.user
@@ -11,7 +11,7 @@ class IsBigBoss(BasePermission):
 
 def forcer_perimetre(request, campement_id=None, bloc_id=None):
     """
-    Périmètre d'un tableau de bord ou d'un rapport. Le Big Boss choisit librement. Un superviseur est limité à son campement :
+    Périmètre d'un tableau de bord ou d'un rapport. Le Super admin choisit librement. Un superviseur est limité à son campement :
     un campement ou un bloc d'un autre campement est refusé (403) ; sans choix, son campement est appliqué.
     """
     from rest_framework import exceptions
@@ -22,7 +22,7 @@ def forcer_perimetre(request, campement_id=None, bloc_id=None):
     if ids is None:
         return campement_id, bloc_id
     if not ids:
-        raise exceptions.PermissionDenied("Aucun campement ne vous est affecté : contactez le Big Boss.")
+        raise exceptions.PermissionDenied("Aucun campement ne vous est affecté : contactez le Super admin.")
     # Un responsable gère un ou plusieurs campements : il choisit l'un des siens ; sans choix, la vue est GLOBALE (tous ses campements)
     autorises = {str(i) for i in ids}
     if bloc_id:

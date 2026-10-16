@@ -255,7 +255,7 @@ class PaiementSalaire(AutoCodeMixin, models.Model):
 class ClotureMensuelle(models.Model):
     """
     Clôture d'un mois : les chiffres du mois sont figés (copie dans `resume`) et plus aucune écriture n'est possible sur ses
-    données (travaux, dépenses, paiements, achats, mouvements de stock) tant que le Big Boss ne l'a pas rouvert.
+    données (travaux, dépenses, paiements, achats, mouvements de stock) tant que le Super admin ne l'a pas rouvert.
     """
 
     periode = models.CharField(max_length=7, unique=True)  # AAAA-MM

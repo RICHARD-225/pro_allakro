@@ -200,7 +200,7 @@ export default function TravailFormulaire({
           {!form.avance_oui && avanceExistante && (
             <p className="rounded-lg bg-earth-50 px-3 py-2 text-xs text-earth-700">
               L'avance {avanceExistante.numero} ({formatFCFA(avanceExistante.montant)}) sera supprimée avec sa dépense.
-              {!isBoss && ' Seul le Big Boss peut supprimer une avance déjà versée.'}
+              {!isBoss && ' Seul le Super admin peut supprimer une avance déjà versée.'}
             </p>
           )}
           {formErrors.avance && typeof formErrors.avance === 'string' && !formErrors.avance_montant && !formErrors.avance_beneficiaire_id && (

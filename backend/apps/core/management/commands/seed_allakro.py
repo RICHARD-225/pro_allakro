@@ -51,7 +51,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('--reset', action='store_true', help='Efface les données métier existantes avant le chargement.')
-        parser.add_argument('--admin-password', default='Allakro@2025', help='Mot de passe du compte Big Boss.')
+        parser.add_argument('--admin-password', default='Allakro@2025', help='Mot de passe du compte Super admin.')
         parser.add_argument('--superviseur-password', default='Superviseur@2025', help='Mot de passe du compte superviseur.')
 
     def creer(self, serializer_class, data, instance=None, **context):
@@ -79,7 +79,7 @@ class Command(BaseCommand):
         campements = (('C1', 'Campement Nord', 'P1', 450), ('C2', 'Campement Sud', 'P2', 380),
                       ('C3', 'Campement Central', 'P3', 320), ('C4', 'Campement Est', 'P1', 280),
                       ('C5', 'Campement Ouest', 'P2', 220))
-        # Un campement a toujours un responsable : le Big Boss (compte créé plus bas) tient ce rôle en attendant ; Jean Kouassi
+        # Un campement a toujours un responsable : le Super admin (compte créé plus bas) tient ce rôle en attendant ; Jean Kouassi
         # (superviseur) prend ensuite « Campement Nord ». Écriture directe : les comptes n'existent pas encore.
         admin = Personne.objects.create(nom='ALLAKRO', prenom='Admin', date_embauche='2023-01-01')
         ids['ADMIN'] = admin.pk
@@ -129,7 +129,7 @@ class Command(BaseCommand):
             }).pk
         services.definir_fonction(admin, Fonction.objects.get(pk=ids['F_DI']), admin.date_embauche)
         # Le superviseur de démonstration (Jean Kouassi, compte créé plus bas) est responsable de « Campement Nord » ;
-        # les autres campements restent au Big Boss. Jean n'est plus rattaché à un bloc : il gère tous ceux de son campement.
+        # les autres campements restent au Super admin. Jean n'est plus rattaché à un bloc : il gère tous ceux de son campement.
         Campement.objects.filter(pk=ids['C1']).update(responsable_id=ids['P1'])
         Personne.objects.filter(pk=ids['P1']).update(bloc=None, campement_id=ids['C1'])
 
@@ -272,7 +272,7 @@ class Command(BaseCommand):
 
         # --- Comptes utilisateurs ---
         roles = {
-            RoleUtilisateur.BIG_BOSS: RoleUtilisateur.objects.create(code=RoleUtilisateur.BIG_BOSS, libelle='Big Boss',
+            RoleUtilisateur.BIG_BOSS: RoleUtilisateur.objects.create(code=RoleUtilisateur.BIG_BOSS, libelle='Super admin',
                                                                      description='Accès complet, administration'),
             RoleUtilisateur.SUPERVISEUR: RoleUtilisateur.objects.create(code=RoleUtilisateur.SUPERVISEUR, libelle='Superviseur',
                                                                         description='Saisie des opérations de terrain'),
@@ -289,7 +289,7 @@ class Command(BaseCommand):
             f"{PaiementSalaire.objects.count()} paiements, {Depense.objects.count()} dépenses, "
             f"{AchatParticulier.objects.count()} achats, {MouvementStock.objects.count()} mouvements de stock."
         ))
-        self.stdout.write(f"Connexion Big Boss   : admin@allakro.com / {options['admin_password']}")
+        self.stdout.write(f"Connexion Super admin   : admin@allakro.com / {options['admin_password']}")
         self.stdout.write(f"Connexion superviseur : k.jean@allakro.com / {options['superviseur_password']}")
 
     def vider(self):

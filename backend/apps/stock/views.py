@@ -15,7 +15,7 @@ class ProduitViewSet(CodePreviewMixin, BaseViewSet):
 
     @transaction.atomic
     def perform_destroy(self, instance):
-        """Supprime le produit avec tous ses mouvements (le Big Boss a confirmé) ; la suppression est tracée au journal."""
+        """Supprime le produit avec tous ses mouvements (le Super admin a confirmé) ; la suppression est tracée au journal."""
         mouvements = instance.mouvements.count()
         if mouvements:
             instance.mouvements.all().delete()

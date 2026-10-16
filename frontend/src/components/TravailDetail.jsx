@@ -22,7 +22,7 @@ function Ligne({ label, children }) {
  * Fiche d'un travail : informations, équipe (et son historique), rémunération à payer et avance, actions.
  * Le travail n'a que son propre statut (À venir, En cours, Terminé, Annulé) : l'état de sa rémunération et ses
  * paiements se suivent dans Salaires (lien « Rémunération »).
- * onModifier(travail) : « Modifier » dans le pied ; onSupprimer(travail) : « Supprimer » (Big Boss) dans le menu « ⋯ ».
+ * onModifier(travail) : « Modifier » dans le pied ; onSupprimer(travail) : « Supprimer » (Super admin) dans le menu « ⋯ ».
  * Pied : « Modifier » et le lien vers la rémunération visibles ; annuler / supprimer dans le menu « ⋯ » (comme dans la liste).
  */
 export default function TravailDetail({ travail, onClose, onChange, onAnnuler, onModifier, onSupprimer }) {

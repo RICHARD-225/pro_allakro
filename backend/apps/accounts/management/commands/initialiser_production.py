@@ -1,5 +1,5 @@
 """
-Premier démarrage d'une base vide (hébergement sans terminal, ex. Render gratuit) : crée les rôles et les comptes Big Boss
+Premier démarrage d'une base vide (hébergement sans terminal, ex. Render gratuit) : crée les rôles et les comptes Super admin
 décrits par des variables d'environnement. Sans danger à chaque démarrage : un compte déjà présent n'est jamais modifié.
 
     BIG_BOSS_1_EMAIL, BIG_BOSS_1_MOT_DE_PASSE, BIG_BOSS_1_PRENOM, BIG_BOSS_1_NOM
@@ -20,17 +20,18 @@ from apps.accounts.models import RoleUtilisateur, Utilisateur
 from apps.core.models import Personne
 
 ROLES = (
-    (RoleUtilisateur.BIG_BOSS, 'Big Boss', 'Accès complet, administration'),
+    (RoleUtilisateur.BIG_BOSS, 'Super admin', 'Accès complet, administration'),
     (RoleUtilisateur.SUPERVISEUR, 'Superviseur', 'Saisie des opérations de terrain'),
 )
 
 
 class Command(BaseCommand):
-    help = "Crée les rôles et les comptes Big Boss d'une base vide à partir des variables BIG_BOSS_1_* et BIG_BOSS_2_*."
+    help = "Crée les rôles et les comptes Super admin d'une base vide à partir des variables BIG_BOSS_1_* et BIG_BOSS_2_*."
 
     def handle(self, *args, **options):
         for code, libelle, description in ROLES:
-            _, cree = RoleUtilisateur.objects.get_or_create(code=code, defaults={'libelle': libelle, 'description': description})
+            # update_or_create : un libellé changé dans le code (ex. « Big Boss » devenu « Super admin ») est repris à chaque démarrage
+            _, cree = RoleUtilisateur.objects.update_or_create(code=code, defaults={'libelle': libelle, 'description': description})
             if cree:
                 self.stdout.write(f"Rôle créé : {libelle}")
         role = RoleUtilisateur.objects.get(code=RoleUtilisateur.BIG_BOSS)
@@ -44,18 +45,18 @@ class Command(BaseCommand):
             configures += 1
             mot_de_passe = os.environ.get(f'BIG_BOSS_{numero}_MOT_DE_PASSE', '')
             if Utilisateur.objects.filter(username=email).exists():
-                self.stdout.write(f"Compte Big Boss {numero} déjà présent : inchangé.")
+                self.stdout.write(f"Compte Super admin {numero} déjà présent : inchangé.")
                 continue
             if not mot_de_passe:
                 raise CommandError(f"BIG_BOSS_{numero}_MOT_DE_PASSE est obligatoire pour créer le compte {email}.")
             try:
                 validate_password(mot_de_passe)
             except ValidationError as erreur:
-                raise CommandError(f"Mot de passe du compte Big Boss {numero} refusé : {' '.join(erreur.messages)}")
+                raise CommandError(f"Mot de passe du compte Super admin {numero} refusé : {' '.join(erreur.messages)}")
             with transaction.atomic():
-                personne = Personne.objects.create(prenom=lire('PRENOM') or 'Big', nom=lire('NOM') or 'Boss')
+                personne = Personne.objects.create(prenom=lire('PRENOM') or 'Super', nom=lire('NOM') or 'admin')
                 Utilisateur.objects.create(personne=personne, role=role, username=email, password_hash=make_password(mot_de_passe))
-            self.stdout.write(self.style.SUCCESS(f"Compte Big Boss {numero} créé : {email}"))
+            self.stdout.write(self.style.SUCCESS(f"Compte Super admin {numero} créé : {email}"))
 
         if not configures and not Utilisateur.objects.exists():
             self.stdout.write(self.style.WARNING(

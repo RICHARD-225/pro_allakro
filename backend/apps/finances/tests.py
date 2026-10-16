@@ -78,7 +78,7 @@ class SalairesTests(ApiTestCase):
         # La dépense ne se modifie ni ne se supprime directement
         self.patch(f'depenses/{depense.pk}/', {'designation': 'X'}, status=400)
         self.delete(f'depenses/{depense.pk}/', status=400)
-        # Supprimer le paiement (Big Boss) supprime sa dépense
+        # Supprimer le paiement (Super admin) supprime sa dépense
         self.login(self.superviseur.username)
         self.delete(f"paiements-salaire/{paiement['id']}/", status=403)
         self.login(self.admin.username)
@@ -479,7 +479,7 @@ class AnnulationEtRepartitionTests(ApiTestCase):
         self.delete(f"mouvements-stock/{entree['id']}/")
         self.assertEqual(self.get(f"produits/{produit['id']}/")['stock_calcule'], -70.0)
         self.assertTrue(Journal.objects.filter(details__contains='négatif').exists())
-        # Le produit part avec ses mouvements : Big Boss uniquement
+        # Le produit part avec ses mouvements : Super admin uniquement
         self.login(self.superviseur.username)
         self.delete(f"produits/{produit['id']}/", status=403)
         self.login(self.admin.username)

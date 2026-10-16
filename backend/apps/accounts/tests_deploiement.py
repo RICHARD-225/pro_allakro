@@ -1,4 +1,4 @@
-"""Déploiement : adresse de base de données (DATABASE_URL) et premier démarrage d'une base vide (comptes Big Boss)."""
+"""Déploiement : adresse de base de données (DATABASE_URL) et premier démarrage d'une base vide (comptes Super admin)."""
 from io import StringIO
 from unittest import mock
 
@@ -65,6 +65,11 @@ class PremierDemarrageTests(TestCase):
         compte.refresh_from_db()
         self.assertEqual(compte.password_hash, ancien)
         self.assertEqual(RoleUtilisateur.objects.count(), 2)
+
+    def test_le_libelle_du_role_est_mis_a_jour_sur_une_base_existante(self):
+        RoleUtilisateur.objects.create(code='big_boss', libelle='Big Boss', description='ancien')
+        self.lancer()
+        self.assertEqual(RoleUtilisateur.objects.get(code='big_boss').libelle, 'Super admin')
 
     def test_mot_de_passe_trop_faible_ou_absent_refuse(self):
         vide = {k: '' for k in ENV}

@@ -215,7 +215,7 @@ class SalaireViewSet(BaseViewSet):
 
 
 class PaiementSalaireViewSet(BaseViewSet):
-    """Paiements des rémunérations : un paiement crée sa dépense et son reçu ; il se corrige (journal) ou se supprime (Big Boss)."""
+    """Paiements des rémunérations : un paiement crée sa dépense et son reçu ; il se corrige (journal) ou se supprime (Super admin)."""
 
     serializer_class = PaiementSalaireSerializer
     audit_label = 'Paiement'
@@ -328,7 +328,7 @@ class PaiementSalaireViewSet(BaseViewSet):
 
 
 class ClotureView(APIView):
-    """GET : mois clôturés (le résumé chiffré n'est montré qu'au Big Boss) ; POST {periode, commentaire} : clôturer (Big Boss)."""
+    """GET : mois clôturés (le résumé chiffré n'est montré qu'au Super admin) ; POST {periode, commentaire} : clôturer (Super admin)."""
 
     permission_classes = [IsAuthenticated]
 
@@ -348,7 +348,7 @@ class ClotureView(APIView):
 
     def post(self, request):
         if not request.user.is_big_boss:
-            raise exceptions.PermissionDenied('Action réservée au Big Boss.')
+            raise exceptions.PermissionDenied('Action réservée au Super admin.')
         cloture = clotures.cloturer(str(request.data.get('periode', '')), request.user, request.data.get('commentaire', ''))
         log_action(request, 'Clôture', 'Clôture mensuelle', None, f"Mois {cloture.periode} clôturé")
         notifier(destinataires(exclure=request.user), 'cloture', f'Mois clôturé : {libelle_periode(cloture.periode)}',
@@ -361,7 +361,7 @@ class ClotureRouvrirView(APIView):
 
     def post(self, request, periode):
         if not request.user.is_big_boss:
-            raise exceptions.PermissionDenied('Action réservée au Big Boss.')
+            raise exceptions.PermissionDenied('Action réservée au Super admin.')
         cloture = clotures.rouvrir(periode, request.user)
         log_action(request, 'Réouverture', 'Clôture mensuelle', None, f"Mois {cloture.periode} rouvert")
         notifier(destinataires(exclure=request.user), 'cloture', f'Mois rouvert : {libelle_periode(cloture.periode)}',

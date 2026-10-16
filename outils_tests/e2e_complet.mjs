@@ -215,11 +215,11 @@ const connexion = async (email, motDePasse) => {
   await attendreReseau();
 };
 
-// ================================================================== Big Boss
+// ================================================================== Super admin
 let contexte = {};
-await etape('Connexion Big Boss', async () => {
+await etape('Connexion Super admin', async () => {
   await connexion('admin@allakro.com', 'Allakro@2025');
-  ok('Connexion Big Boss', await page.evaluate(() => location.pathname));
+  ok('Connexion Super admin', await page.evaluate(() => location.pathname));
 });
 
 await etape('Menu latéral', async () => {
@@ -924,7 +924,7 @@ await etape('Stock : retirer un produit du stock et le remettre', async () => {
   await api('DELETE', `/produits/${produit.id}/`);
 });
 
-await etape('Utilisateurs : le Big Boss crée un superviseur et suit son activité', async () => {
+await etape('Utilisateurs : le Super admin crée un superviseur et suit son activité', async () => {
   const email = 'awa.e2e@allakro.com';
   await aller('/utilisateurs');
   await cliquerBouton('Nouvel utilisateur', { dansDialogue: false });
@@ -951,7 +951,7 @@ await etape('Utilisateurs : le Big Boss crée un superviseur et suit son activit
   verifier(confie.statut === 200 && (await api('GET', `/campements/${contexte.bloc.campement_id}/`)).donnees.responsable_id === compte.personne_id,
     'Campement confié au superviseur : il en est le responsable', String(confie.statut));
 
-  // Le superviseur se connecte et agit ; le Big Boss le suit
+  // Le superviseur se connecte et agit ; le Super admin le suit
   await api('POST', '/auth/logout/');
   const connexionSup = await api('POST', '/auth/login/', { username: email, password: 'Superviseur@2026' });
   verifier(connexionSup.statut === 200, 'Le nouveau superviseur peut se connecter', String(connexionSup.statut));
@@ -974,7 +974,7 @@ await etape('Utilisateurs : le Big Boss crée un superviseur et suit son activit
   const compteEncore = (await api('GET', '/utilisateurs/')).donnees.find((u) => u.email === email);
   verifier(compteEncore?.actif === true && (await toasts()).includes('responsable de campement'),
     'Responsable de campement : désactivation refusée tant qu’il gère un campement', (await toasts()).slice(0, 140));
-  // Après avoir désigné un autre responsable (le Big Boss), la désactivation est permise
+  // Après avoir désigné un autre responsable (le Super admin), la désactivation est permise
   const moiBoss = (await api('GET', '/auth/me/')).donnees;
   await api('PATCH', `/campements/${contexte.bloc.campement_id}/`, { responsable_id: moiBoss.personne_id });
   await fermerToasts();
@@ -1014,7 +1014,7 @@ await etape('Dépenses : supprimer une dépense automatique (paiement, achat) av
   await cliquerBouton('Supprimer la dépense', { exact: true });
   await attendreReseau();
   verifier((await api('GET', `/achats-particuliers/${achat.donnees.id}/`)).statut === 404, 'Base : l’achat et sa dépense sont supprimés');
-  // Dépense saisie directement : suppression avec confirmation (déjà couverte plus haut) ; réservée au Big Boss
+  // Dépense saisie directement : suppression avec confirmation (déjà couverte plus haut) ; réservée au Super admin
 });
 
 await etape('Stock : supprimer un mouvement et un produit (avec ses mouvements)', async () => {

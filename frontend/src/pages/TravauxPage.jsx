@@ -245,7 +245,7 @@ export default function TravauxPage() {
         date: form.avance_date,
       };
     } else if (avanceExistante) {
-      payload.avance = null; // suppression de l'avance (Big Boss)
+      payload.avance = null; // suppression de l'avance (Super admin)
     }
     try {
       const item = enModification ? await travauxService.update(edition.id, payload) : await travauxService.create(payload);

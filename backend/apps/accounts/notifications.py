@@ -46,7 +46,7 @@ def alerte_stock(produit, stock_avant, stock_apres, auteur=None):
 
 
 def rappel_remunerations(utilisateur):
-    """Rappel quotidien au Big Boss : rémunérations de travaux terminés depuis plus de 7 jours qui restent à payer."""
+    """Rappel quotidien au Super admin : rémunérations de travaux terminés depuis plus de 7 jours qui restent à payer."""
     from apps.finances.models import PaiementSalaire, Salaire
 
     if not getattr(utilisateur, 'is_big_boss', False):

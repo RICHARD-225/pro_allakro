@@ -10,7 +10,7 @@ import { formatDateTime, formatPeriode } from '@/utils/format';
 const moisCourant = () => new Date().toISOString().slice(0, 7);
 
 /**
- * Clôture du mois affiché dans le bilan : chiffres figés, plus aucune écriture sur les données du mois (Big Boss : clôturer / rouvrir).
+ * Clôture du mois affiché dans le bilan : chiffres figés, plus aucune écriture sur les données du mois (Super admin : clôturer / rouvrir).
  * `periode` : AAAA-MM du bilan affiché.
  */
 export default function ClotureMois({ periode, onChange }) {

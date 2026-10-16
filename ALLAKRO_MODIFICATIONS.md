@@ -609,3 +609,18 @@ Demande : régler tous les problèmes de sécurité de l'audit et les améliorat
 - **Erreur de création d'un responsable** : un téléphone déjà attribué s'affiche maintenant **sous le champ Téléphone** (il s'affichait sous « Nom »). Le numéro refusé appartient réellement à une autre personne : pour faire d'une personne déjà enregistrée un responsable, créer son compte depuis Administration > Utilisateurs en la rattachant (« Rattacher à une personne déjà enregistrée »).
 - Vérifié : `outils_tests/verif_chargement.mjs` (6 vérifications : repos, barre sur requête lente, fin, entrée animée, bouton, erreur sous le bon champ), test de bout en bout **202/202** sur le build de production, 161 tests backend + 1 nouveau test (erreur de fiche sous son champ).
 - **Limite honnête** : la barre est « indéterminée » (elle indique qu'une opération est en cours, pas son pourcentage réel) : le serveur ne connaît pas l'avancement d'une requête. Les liens du réseau local (adresse IP) doivent être déclarés dans `CORS_ALLOWED_ORIGINS` du `.env` (fait pour 10.10.11.177).
+
+
+### 14.10 « Super admin », superficie, localisation, responsable automatique (16 octobre 2026)
+- **Renommage « Big Boss » → « Super admin »** dans tous les textes affichés (interface, messages d'erreur, libellé du rôle, tests, outils de test, guides). Les identifiants internes restent inchangés : code de rôle `big_boss`, permission `IsBigBoss`, variables d'environnement `BIG_BOSS_1_*` / `BIG_BOSS_2_*` (déjà configurées sur Render).
+- `initialiser_production` utilise désormais `update_or_create` pour les rôles : au prochain démarrage, le libellé d'un rôle existant est repris (une base déjà initialisée affichera « Super admin » sans intervention). Prénom/nom par défaut du compte créé sans variables : « Super admin ».
+- **Superficie** : facultative pour une plantation et un campement (comme avant) ; **obligatoire et supérieure à 0 pour un bloc** (serveur : « La superficie est obligatoire » ; formulaire : étoile + message).
+- **Localisation** : nouveau champ sur le **bloc** (migration `core.0010_bloc_localisation`) ; le **campement** avait déjà le champ en base, il est maintenant dans son formulaire. Affichée dans les fiches (campement, bloc) et sous le nom dans les listes.
+- **Responsable automatique** : à la création d'un campement, s'il n'existe qu'un seul responsable possible (ex. le Super admin seul), il est choisi d'office (`CampementModal.jsx`).
+- **Vérifié** : 162 tests backend (1 test corrigé : il créait un bloc sans superficie) ; `verif_exploitation.mjs` 28/28 ; `verif_responsable_auto.mjs` (nouveau) 5/5 ; `verif_roles.mjs` 13/13 après mise à jour de 3 vérifications devenues fausses (le superviseur peut créer/modifier ses blocs ; le Super admin est proposé comme responsable) ; `balayage_pages.mjs` sans erreur.
+- **Pour le client déjà en ligne** : vider la base (Neon) puis redéployer recrée le compte depuis les variables `BIG_BOSS_1_*` ; la migration 0010 s'applique au démarrage.
+
+
+## Guide utilisateur client (hors dépôt)
+
+Guide PDF + Word (51 pages, parties Super admin / responsable) et guide « Super admin seul » (47 pages) créé dans `Desktop\Guide ALLAKRO\` (volontairement hors GitHub, dépôt public). Captures automatiques sur base de démo (`source\captures.mjs`). Correctif lié trouvé pendant les captures : animation d entrée de page en fill-mode `backwards` (les fenêtres plein écran étaient cassées avec `both`).

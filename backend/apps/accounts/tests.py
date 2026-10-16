@@ -88,7 +88,7 @@ class LimitationTests(ApiTestCase):
 
 
 class SuiviDesUtilisateursTests(ApiTestCase):
-    """Le Big Boss crée un superviseur (avec sa fiche de personnel) et suit son activité."""
+    """Le Super admin crée un superviseur (avec sa fiche de personnel) et suit son activité."""
 
     def setUp(self):
         super().setUp()
@@ -121,7 +121,7 @@ class SuiviDesUtilisateursTests(ApiTestCase):
 
     def test_suivi_de_l_activite_d_un_utilisateur(self):
         compte = self.creer_superviseur()
-        categorie = self.post('categories-depenses/', {'libelle': 'Carburant'})  # le Big Boss gère les catégories
+        categorie = self.post('categories-depenses/', {'libelle': 'Carburant'})  # le Super admin gère les catégories
         self.login('awa@test.ci', 'Superviseur@2026')
         self.post('depenses/', {'designation': 'Gasoil', 'categorie_id': categorie['id'], 'bloc_id': self.bloc['id'],
                                 'date': HIER, 'montant_total': 1000})
@@ -131,7 +131,7 @@ class SuiviDesUtilisateursTests(ApiTestCase):
         self.assertGreaterEqual(suivi['nb_actions'], 1)
         self.assertEqual(suivi['dernieres_actions'][0]['action'], 'Création')
         self.assertIsNotNone(suivi['derniere_connexion'])
-        # Réservé au Big Boss
+        # Réservé au Super admin
         self.login('awa@test.ci', 'Superviseur@2026')
         self.assertEqual(self.client.get(f"/api/v1/utilisateurs/{compte['id']}/activite/").status_code, 403)
 

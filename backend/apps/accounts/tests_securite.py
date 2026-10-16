@@ -238,7 +238,7 @@ class InjectionsEtContraintesTests(ApiTestCase):
 
 
 class PerimetreParCampementTests(ApiTestCase):
-    """Un superviseur ne voit, ne crée et ne modifie que les données de son campement ; le Big Boss voit tout."""
+    """Un superviseur ne voit, ne crée et ne modifie que les données de son campement ; le Super admin voit tout."""
 
     def setUp(self):
         super().setUp()
@@ -269,7 +269,7 @@ class PerimetreParCampementTests(ApiTestCase):
         self.assertEqual(self.ids('depenses/'), {self.depense_a['id']})
         self.assertEqual(len(self.get('salaires/')), 1)
         self.assertEqual(len(self.get('plantations/')), 1)
-        # Le Big Boss voit tout
+        # Le Super admin voit tout
         self.login(self.admin.username)
         self.assertEqual(self.ids('depenses/'), {self.depense_a['id'], self.depense_b['id']})
         self.assertEqual(self.ids('travaux/'), {self.travail_a['id'], self.travail_b['id']})
@@ -329,7 +329,7 @@ class PerimetreParCampementTests(ApiTestCase):
 
     def test_superviseur_sans_campement_ne_voit_rien(self):
         from apps.core.models import Campement
-        # Il n'est plus responsable d'aucun campement : le Big Boss en devient responsable
+        # Il n'est plus responsable d'aucun campement : le Super admin en devient responsable
         Campement.objects.filter(pk=self.campement['id']).update(responsable_id=self.admin.personne_id)
         self.assertEqual(self.get('depenses/'), [])
         self.assertEqual(self.get('travaux/'), [])
@@ -348,7 +348,7 @@ class PerimetreParCampementTests(ApiTestCase):
         self.assertEqual(self.client.get('/api/v1/campements/responsables/').status_code, 403)  # superviseur
         self.login(self.admin.username)
         propose = {p['id'] for p in self.get('campements/responsables/')}
-        # Superviseurs et Big Boss (qui peut aussi être responsable) : jamais les ouvriers sans compte
+        # Superviseurs et Super admin (qui peut aussi être responsable) : jamais les ouvriers sans compte
         self.assertEqual(propose, {self.superviseur.personne_id, self.admin.personne_id})
         # Une personne sans compte est refusée par l'API, même si l'interface ne la propose pas
         refus = self.client.post('/api/v1/campements/', {'nom': 'Camp C', 'plantation_id': self.plantation['id'], 'superficie': 1,
@@ -377,7 +377,7 @@ class PerimetreParCampementTests(ApiTestCase):
         self.assertEqual(self.client.get(f"/api/v1/tableau-de-bord/?campement_id={self.campement_b['id']}").status_code, 403)
 
     def test_le_superviseur_n_a_pas_les_droits_du_big_boss(self):
-        """Structure, comptes, journal, clôture, suppression : tout cela reste réservé au Big Boss (l'API répond 403)."""
+        """Structure, comptes, journal, clôture, suppression : tout cela reste réservé au Super admin (l'API répond 403)."""
         attendu_403 = [
             ('post', 'plantations/', {'nom': 'X', 'superficie': 1}),
             ('patch', f"plantations/{self.plantation['id']}/", {'nom': 'Renommée'}),
@@ -415,7 +415,7 @@ class PerimetreParCampementTests(ApiTestCase):
         self.assertIn('responsable_id', self.post('campements/', donnees, status=400))
         # Une personne sans compte n'est pas un responsable valide
         self.assertEqual(self.client.post('/api/v1/campements/', {**donnees, 'responsable_id': self.personne_b['id']}, format='json').status_code, 400)
-        # Le Big Boss peut l'être
+        # Le Super admin peut l'être
         cree = self.post('campements/', {**donnees, 'responsable_id': self.admin.personne_id})
         self.assertEqual(cree['responsable_id'], self.admin.personne_id)
         # On ne retire jamais le responsable : on en désigne un autre
@@ -442,7 +442,7 @@ class PerimetreParCampementTests(ApiTestCase):
         refus = self.client.post('/api/v1/blocs/', {'nom': 'B2', 'campement_id': self.campement_b['id'], 'superficie': 5,
                                                      'nombre_plantes': 10}, format='json')
         self.assertEqual(refus.status_code, 403)
-        self.assertEqual(self.client.delete(f"/api/v1/blocs/{cree['id']}/").status_code, 403)  # la suppression reste au Big Boss
+        self.assertEqual(self.client.delete(f"/api/v1/blocs/{cree['id']}/").status_code, 403)  # la suppression reste au Super admin
         self.login(self.admin.username)
         self.assertEqual(len([b for b in self.get('blocs/') if b['campement_id'] == self.campement_b['id']]), 1)  # rien créé chez B
 

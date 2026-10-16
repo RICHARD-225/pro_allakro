@@ -103,7 +103,7 @@ export default function LoginPage() {
             />
             <span className="text-sm text-ink-600">Se souvenir de moi</span>
           </label>
-          {/* Sans serveur de courrier (VITE_MOT_DE_PASSE_OUBLIE=false à la construction), le Big Boss réinitialise les mots de passe */}
+          {/* Sans serveur de courrier (VITE_MOT_DE_PASSE_OUBLIE=false à la construction), le Super admin réinitialise les mots de passe */}
           {import.meta.env.VITE_MOT_DE_PASSE_OUBLIE === 'false' ? (
             <span className="text-xs text-ink-500">Mot de passe perdu ? Contactez votre administrateur.</span>
           ) : (
@@ -128,7 +128,7 @@ export default function LoginPage() {
             onClick={() => fillDemo('boss')}
             className="px-3 py-2 text-xs font-medium rounded-lg border border-ink-200 hover:border-forest-300 hover:bg-forest-50/50 transition-colors text-ink-600"
           >
-            Big Boss
+            Super admin
           </button>
           <button
             onClick={() => fillDemo('superviseur')}

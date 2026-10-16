@@ -76,7 +76,7 @@ export const notificationsService = {
   lire: (id) => api.post(`/notifications/${id}/lire/`),
   toutLire: () => api.post('/notifications/lire-tout/'),
 };
-// Clôture mensuelle (Big Boss) : chiffres du mois figés, plus d'écriture sur ses données
+// Clôture mensuelle (Super admin) : chiffres du mois figés, plus d'écriture sur ses données
 export const cloturesService = {
   getAll: () => api.get('/clotures/'),
   cloturer: (periode, commentaire = '') => api.post('/clotures/', { periode, commentaire }),
@@ -105,7 +105,7 @@ export const achatsParticuliersService = {
 // Administration
 export const utilisateursService = {
   ...resource('utilisateurs'),
-  // Suivi d'un compte (Big Boss) : connexions, actions par type et dernières actions du journal
+  // Suivi d'un compte (Super admin) : connexions, actions par type et dernières actions du journal
   activite: (id) => api.get(`/utilisateurs/${id}/activite/`),
   // Lève le blocage de connexion d'un compte (trop d'échecs de mot de passe)
   debloquer: (id) => api.post(`/utilisateurs/${id}/debloquer/`),

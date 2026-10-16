@@ -60,7 +60,7 @@ def delai_avant_tentative(identifiant, adresse_ip):
 
 
 def debloquer(identifiant):
-    """Efface les échecs récents d'un compte (déblocage par le Big Boss) ; retourne le nombre d'échecs effacés."""
+    """Efface les échecs récents d'un compte (déblocage par le Super admin) ; retourne le nombre d'échecs effacés."""
     return TentativeConnexion.objects.filter(identifiant=identifiant[:150], reussie=False).delete()[0]
 
 

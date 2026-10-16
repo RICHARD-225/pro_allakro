@@ -8,7 +8,7 @@ const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 const PAGES = ['dashboard', 'plantations', 'campements', 'blocs', 'personnes', 'travaux', 'types-travaux', 'salaires', 'salaires?onglet=paiements',
   'depenses', 'categories', 'stock', 'particuliers', 'bilan', 'rapports', 'utilisateurs', 'journal', 'parametres'];
 const COMPTES = [
-  { nom: 'Big Boss', email: 'admin@allakro.com', mdp: 'Allakro@2025' },
+  { nom: 'Super admin', email: 'admin@allakro.com', mdp: 'Allakro@2025' },
   { nom: 'Superviseur', email: 'k.jean@allakro.com', mdp: 'Superviseur@2025' },
 ];
 

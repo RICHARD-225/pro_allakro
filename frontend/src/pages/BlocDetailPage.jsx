@@ -126,6 +126,7 @@ export default function BlocDetailPage() {
             <Info label="Code"><span className="tabular-nums">{bloc.code}</span></Info>
             <Info label="Nom">{bloc.nom}</Info>
             <Info label="Plantation · campement">{[bloc.plantation_nom, bloc.campement_nom].filter(Boolean).join(' · ') || '—'}</Info>
+            <Info label="Localisation">{bloc.localisation || '—'}</Info>
             <Info label="Superficie"><span className="tabular-nums">{formatNumber(bloc.superficie)} ha</span></Info>
             <Info label="Nombre de plantes">
               <span className="tabular-nums">{formatNumber(bloc.nombre_plantes)}</span>

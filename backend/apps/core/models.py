@@ -38,7 +38,7 @@ class Campement(AutoCodeMixin, models.Model):
     code_prefix = "CMP-"
 
     plantation = models.ForeignKey(Plantation, on_delete=models.PROTECT, related_name="campements")
-    # Un campement a toujours un responsable (superviseur ou Big Boss) : il gère tous les blocs du campement
+    # Un campement a toujours un responsable (superviseur ou Super admin) : il gère tous les blocs du campement
     responsable = models.ForeignKey(
         'Personne',
         on_delete=models.PROTECT,
@@ -69,6 +69,7 @@ class Bloc(AutoCodeMixin, models.Model):
     campement = models.ForeignKey(Campement, on_delete=models.PROTECT, related_name="blocs")
     code = models.CharField(max_length=50, unique=True, blank=True)
     nom = models.CharField(max_length=150)
+    localisation = models.CharField(max_length=255, blank=True)
     superficie = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     unite_superficie = models.CharField(max_length=30, default="ha")
     # Nombre de plantes présentes sur la superficie du bloc

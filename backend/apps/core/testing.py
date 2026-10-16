@@ -38,7 +38,7 @@ class ApiTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.fonction = Fonction.objects.create(libelle='Ouvrier agricole')
-        boss = RoleUtilisateur.objects.create(code='big_boss', libelle='Big Boss')
+        boss = RoleUtilisateur.objects.create(code='big_boss', libelle='Super admin')
         sup = RoleUtilisateur.objects.create(code='superviseur', libelle='Superviseur')
         p_admin = Personne.objects.create(nom='Admin', prenom='Test')
         p_sup = Personne.objects.create(nom='Sup', prenom='Test')

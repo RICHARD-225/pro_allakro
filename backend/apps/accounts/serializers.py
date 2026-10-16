@@ -81,7 +81,7 @@ class RoleSerializer(serializers.ModelSerializer):
 
 class UtilisateurSerializer(serializers.ModelSerializer):
     """
-    Compte d'accès. À la création, le Big Boss rattache le compte à une personne existante (`personne_id`) ou en crée
+    Compte d'accès. À la création, le Super admin rattache le compte à une personne existante (`personne_id`) ou en crée
     une du même coup (`prenom`, `nom_personne`, `telephone` facultatif) : c'est ainsi qu'il crée un superviseur. Un superviseur est
     responsable de campements : `campements_ids` (facultatif) lui confie ces campements, qu'il gère avec tous leurs blocs.
     """
@@ -149,7 +149,7 @@ class UtilisateurSerializer(serializers.ModelSerializer):
             if attrs.get('actif') is False:
                 raise serializers.ValidationError({'actif': 'Vous ne pouvez pas désactiver votre propre compte.'})
             if 'role' in attrs and attrs['role'].code != RoleUtilisateur.BIG_BOSS:
-                raise serializers.ValidationError({'role': 'Vous ne pouvez pas retirer votre propre rôle Big Boss.'})
+                raise serializers.ValidationError({'role': 'Vous ne pouvez pas retirer votre propre rôle Super admin.'})
         return attrs
 
     @staticmethod

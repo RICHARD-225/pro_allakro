@@ -44,7 +44,7 @@ export const ROLE = {
 };
 
 export const ROLE_LABELS = {
-  big_boss: 'Big Boss',
+  big_boss: 'Super admin',
   superviseur: 'Superviseur',
 };
 

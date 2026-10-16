@@ -74,11 +74,11 @@ class CampementSerializer(serializers.ModelSerializer):
         responsable = attrs.get('responsable')
         if responsable and (self.instance is None or self.instance.responsable_id != responsable.pk):
             v.actif(responsable, 'Le responsable choisi')
-            # Le responsable est un utilisateur actif : superviseur, ou Big Boss (qui peut aussi tenir ce rôle)
+            # Le responsable est un utilisateur actif : superviseur, ou Super admin (qui peut aussi tenir ce rôle)
             compte = getattr(responsable, 'utilisateur', None)
             if compte is None or not compte.actif:
                 raise serializers.ValidationError({'responsable_id': (
-                    "Le responsable doit être un utilisateur actif (superviseur ou Big Boss) : "
+                    "Le responsable doit être un utilisateur actif (superviseur ou Super admin) : "
                     "créez d'abord son compte dans Administration > Utilisateurs, ou utilisez « Nouveau responsable ».")})
         try:
             v.unique_insensible(plantation.campements, 'nom', nom, self.instance,
@@ -129,10 +129,14 @@ class BlocSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Bloc
-        fields = ['id', 'code', 'nom', 'campement_id', 'campement_nom', 'plantation_id', 'plantation_nom', 'superficie',
-                  'unite_superficie', 'nombre_plantes', 'description', 'actif', 'nb_personnes', 'created_at']
+        fields = ['id', 'code', 'nom', 'campement_id', 'campement_nom', 'plantation_id', 'plantation_nom', 'localisation',
+                  'superficie', 'unite_superficie', 'nombre_plantes', 'description', 'actif', 'nb_personnes', 'created_at']
         read_only_fields = ['code']
         extra_kwargs = {
+            # La superficie est facultative pour une plantation et un campement, mais obligatoire pour un bloc
+            'superficie': {'required': True, 'error_messages': {
+                'required': 'La superficie est obligatoire.', 'invalid': 'Superficie invalide.', 'null': 'La superficie est obligatoire.',
+            }},
             'nombre_plantes': {'required': True, 'error_messages': {
                 'required': 'Le nombre de plantes est obligatoire.', 'invalid': 'Nombre de plantes invalide.',
                 'min_value': 'Le nombre de plantes ne peut pas être négatif.',
@@ -143,7 +147,10 @@ class BlocSerializer(serializers.ModelSerializer):
         return v.texte_obligatoire(value, 'Le nom')
 
     def validate_superficie(self, value):
-        return v.positif_ou_nul(value, 'La superficie')
+        v.positif_ou_nul(value, 'La superficie')
+        if value is None or value <= 0:
+            raise serializers.ValidationError('La superficie est obligatoire : indiquez-la en hectares.')
+        return value
 
     def validate_nombre_plantes(self, value):
         if value is None or value < 0:

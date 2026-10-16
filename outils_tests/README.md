@@ -12,8 +12,8 @@ Scripts pour tester l'application **dans un vrai navigateur** (Edge sans fenêtr
 | `captures_comparaison.mjs` + `comparer_captures.py` | Captures de 18 pages (bureau/mobile, clair/sombre) puis comparaison pixel à pixel de deux versions de l'interface (ex. avant/après une mise à jour de Tailwind). |
 | `verif_exploitation.mjs` | Parcours « Exploitation » dans le navigateur : arbre, création plantation → campement (avec nouveau responsable) → bloc, fiches, anciennes adresses, déconnexion avec confirmation, vue d'un responsable (27 vérifications). |
 | `verif_roles.mjs` | Vérifie dans le navigateur : responsables de campement proposés, bouton « voir le mot de passe », droits du superviseur (aucun bouton de structure, **et les listes s'affichent bien**). |
-| `balayage_pages.mjs` | Ouvre toutes les pages avec un Big Boss puis un superviseur et signale toute réponse d'erreur de l'API (un superviseur ne doit déclencher aucun 403 sur ses pages) ou toute page « erreur ». |
-| `simuler_render.py` | Simule en local le démarrage de l'API sur Render (base vide, `DATABASE_URL`, migrations, comptes Big Boss, connexion). |
+| `balayage_pages.mjs` | Ouvre toutes les pages avec un Super admin puis un superviseur et signale toute réponse d'erreur de l'API (un superviseur ne doit déclencher aucun 403 sur ses pages) ou toute page « erreur ». |
+| `simuler_render.py` | Simule en local le démarrage de l'API sur Render (base vide, `DATABASE_URL`, migrations, comptes Super admin, connexion). |
 | `lancer_serveurs_test.ps1` / `arreter_serveurs_test.ps1` | Démarrent / arrêtent les serveurs de test (Django 8001, interface 5180, Edge 9333). |
 | `pg_outils.py` | Sauvegarde `pg_dump`, copie, création et suppression d'une base PostgreSQL (sans afficher les identifiants). |
 
@@ -52,7 +52,7 @@ node captures_modif.mjs captures_x   # images dans outils_tests\captures_x\
 cd ..rontend; npm run lint        # ESLint : détecte les identifiants non importés (le build Vite ne les voit pas)
 ```
 
-Les comptes de démonstration sont `admin@allakro.com` / `Allakro@2025` (Big Boss) et `k.jean@allakro.com` / `Superviseur@2025`.
+Les comptes de démonstration sont `admin@allakro.com` / `Allakro@2025` (Super admin) et `k.jean@allakro.com` / `Superviseur@2025`.
 
 ## À savoir
 

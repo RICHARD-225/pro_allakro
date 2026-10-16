@@ -48,7 +48,7 @@ export default function BlocsPage() {
     { key: 'nom', header: 'Bloc', sortable: true, render: (row) => (
       <span>
         <span className="font-medium text-ink-800">{row.nom}</span>
-        <span className="block text-xs font-normal text-ink-500"><span className="tabular-nums text-forest-700">{row.code}</span> · {row.campement_nom}</span>
+        <span className="block text-xs font-normal text-ink-500"><span className="tabular-nums text-forest-700">{row.code}</span> · {row.campement_nom}{row.localisation ? ` · ${row.localisation}` : ''}</span>
       </span>
     ) },
     { key: 'nombre_plantes', header: 'Plantes', sortable: true, render: (row) => <span className="tabular-nums">{formatNumber(row.nombre_plantes)}</span> },

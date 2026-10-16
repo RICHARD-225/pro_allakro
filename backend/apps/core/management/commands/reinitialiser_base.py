@@ -92,7 +92,7 @@ class Command(BaseCommand):
                                          'bloc_id': c1.pk, 'date_embauche': '2023-02-15'})
         moussa = c(PersonneSerializer, {'nom': 'Traoré', 'prenom': 'Moussa', 'telephone': '07 09 01 23 45', 'fonction_libelle': 'Saigneur',
                                         'bloc_id': b1.pk, 'date_embauche': '2023-01-30'})
-        # Les responsables sont des comptes (superviseur ou Big Boss) : répartis entre les comptes existants
+        # Les responsables sont des comptes (superviseur ou Super admin) : répartis entre les comptes existants
         for i, campement in enumerate(campements):
             Campement.objects.filter(pk=campement.pk).update(responsable_id=comptes[(len(comptes) - 1 - i) % len(comptes)].personne_id)
 

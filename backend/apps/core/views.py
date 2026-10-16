@@ -22,7 +22,7 @@ class PlantationViewSet(CodePreviewMixin, BaseViewSet):
     serializer_class = PlantationSerializer
     audit_label = 'Plantation'
     ordre_defaut = ('-date_creation', '-id')
-    # La structure de l'exploitation (plantations, campements) ne se modifie que par le Big Boss
+    # La structure de l'exploitation (plantations, campements) ne se modifie que par le Super admin
     big_boss_actions = ('create', 'update', 'partial_update', 'destroy')
 
     def perimetre(self, queryset, ids):
@@ -40,7 +40,7 @@ class CampementViewSet(CodePreviewMixin, BaseViewSet):
 
     @action(detail=False, methods=['get'])
     def responsables(self, request):
-        """Personnes proposées comme responsables : superviseurs et Big Boss actifs, avec les campements qu'ils gèrent déjà."""
+        """Personnes proposées comme responsables : superviseurs et Super admin actifs, avec les campements qu'ils gèrent déjà."""
         from apps.accounts.models import RoleUtilisateur, Utilisateur
         comptes = Utilisateur.objects.filter(actif=True, role__code__in=(RoleUtilisateur.SUPERVISEUR, RoleUtilisateur.BIG_BOSS))
         donnees = []
@@ -61,7 +61,7 @@ class BlocViewSet(CodePreviewMixin, BaseViewSet):
     filter_map = {'campement_id': 'campement_id'}
     ordre_defaut = ('-date_creation', '-id')
     perimetre_lookup = 'campement_id'
-    # Un responsable crée et modifie les blocs de SES campements (contrôlé par le périmètre) ; la suppression reste au Big Boss
+    # Un responsable crée et modifie les blocs de SES campements (contrôlé par le périmètre) ; la suppression reste au Super admin
     big_boss_actions = ('destroy',)
 
     def describe(self, instance):

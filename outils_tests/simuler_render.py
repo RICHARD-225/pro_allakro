@@ -110,7 +110,7 @@ try:
         statut, _, corps = appel('/api/v1/auth/login/', {'username': email, 'password': mdp}, {'X-CSRFToken': jeton, 'Origin': f'http://127.0.0.1:{PORT}'})
         verifier(statut == 200, f'connexion {email}', str(statut))
         statut, _, corps = appel('/api/v1/auth/me/')
-        verifier(statut == 200 and json.loads(corps)['role'] == 'big_boss', f'profil Big Boss {email}')
+        verifier(statut == 200 and json.loads(corps)['role'] == 'big_boss', f'profil Super admin {email}')
         cookies.clear()
         jeton = json.loads(appel('/api/v1/auth/csrf/')[2])['csrfToken']
     statut, _, _ = appel('/api/v1/auth/login/', {'username': 'proprietaire@exemple.ci', 'password': 'faux'}, {'X-CSRFToken': jeton})

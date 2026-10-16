@@ -11,7 +11,7 @@ import { formatDateTime } from '@/utils/format';
 import { showServerErrors } from '@/utils/errors';
 import { ROLE_LABELS, ROLE } from '@/constants';
 
-// Création : le Big Boss saisit la personne (prénom, nom) et son compte d'un seul coup ; un superviseur est responsable de campements ; « existante » rattache le compte à
+// Création : le Super admin saisit la personne (prénom, nom) et son compte d'un seul coup ; un superviseur est responsable de campements ; « existante » rattache le compte à
 // une personne déjà enregistrée
 const EMPTY_FORM = {
   prenom: '', nom_personne: '', telephone: '', campements_ids: [],

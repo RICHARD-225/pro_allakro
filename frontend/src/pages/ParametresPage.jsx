@@ -84,7 +84,7 @@ export default function ParametresPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input label="Nom complet" value={user?.name || ''} disabled hint="Modifiable dans la fiche du personnel" />
-                <Input label="Email (identifiant)" value={user?.email || ''} disabled hint="Modifiable par le Big Boss (Utilisateurs)" />
+                <Input label="Email (identifiant)" value={user?.email || ''} disabled hint="Modifiable par le Super admin (Utilisateurs)" />
               </div>
               <p className="text-xs tabular-nums text-ink-500">Dernière connexion : {formatDateTime(user?.derniere_connexion)}</p>
             </div>

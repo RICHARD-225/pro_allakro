@@ -1,10 +1,10 @@
 """
 Clôture mensuelle : un mois clôturé est figé.
 
-- clôturer : copie les chiffres du mois (tableau de bord de toute l'exploitation) dans `resume` ; réservé au Big Boss, mois terminé seulement ;
+- clôturer : copie les chiffres du mois (tableau de bord de toute l'exploitation) dans `resume` ; réservé au Super admin, mois terminé seulement ;
 - tant que le mois est clôturé, toute écriture sur une donnée de ce mois est refusée (travaux, dépenses, achats, mouvements de stock,
   rémunérations, paiements dont la date OU celle de la rémunération / de l'achat tombe dans le mois) ;
-- rouvrir : le Big Boss lève la clôture (tracée au journal) ; le contrôle `verifier_coherence` compare les chiffres d'un mois clôturé à sa copie.
+- rouvrir : le Super admin lève la clôture (tracée au journal) ; le contrôle `verifier_coherence` compare les chiffres d'un mois clôturé à sa copie.
 """
 from django.utils import timezone
 from rest_framework import serializers
@@ -29,7 +29,7 @@ def verifier_ouverte(*dates):
         noms = ', '.join(libelle_periode(p) for p in sorted(fermes))
         raise serializers.ValidationError({'detail': (
             f"La période {noms} est clôturée : aucune écriture n'est possible sur ses données. "
-            "Le Big Boss peut rouvrir le mois (Bilan mensuel).")})
+            "Le Super admin peut rouvrir le mois (Bilan mensuel).")})
 
 
 def resume_periode(periode):

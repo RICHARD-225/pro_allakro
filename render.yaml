@@ -13,7 +13,7 @@ services:
     region: frankfurt
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    # Pas de terminal sur l'offre gratuite : migrations et création des comptes Big Boss se font à chaque démarrage (sans danger).
+    # Pas de terminal sur l'offre gratuite : migrations et création des comptes Super admin se font à chaque démarrage (sans danger).
     startCommand: python manage.py migrate --noinput && python manage.py initialiser_production && gunicorn PRoAll.wsgi:application --workers 1 --threads 4 --timeout 60 --bind 0.0.0.0:$PORT --access-logfile - --error-logfile -
     healthCheckPath: /api/v1/sante/
     autoDeploy: true
@@ -46,7 +46,7 @@ services:
       # Base Neon : coller l'adresse de connexion (« Connection string », avec sslmode=require)
       - key: DATABASE_URL
         sync: false
-      # Comptes Big Boss créés au premier démarrage (laisser le second vide s'il n'est pas utilisé)
+      # Comptes Super admin créés au premier démarrage (laisser le second vide s'il n'est pas utilisé)
       - key: BIG_BOSS_1_EMAIL
         sync: false
       - key: BIG_BOSS_1_MOT_DE_PASSE

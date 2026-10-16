@@ -73,7 +73,7 @@ export default function DepensesPage() {
   });
 
   // Supprimer une dépense automatique agit sur sa source : un paiement de salaire est annulé (il reste dans l'historique),
-  // un achat est supprimé avec ses règlements. Toujours après confirmation, et réservé au Big Boss.
+  // un achat est supprimé avec ses règlements. Toujours après confirmation, et réservé au Super admin.
   const { demander: demanderSuppressionSource, dialogue: dialogueSource } = useSuppression({
     supprimer: (row) => (row.origine?.type === 'SALAIRE'
       ? paiementsService.annuler(row.origine.id, 'Dépense supprimée')

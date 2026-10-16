@@ -61,7 +61,7 @@ class Utilisateur(models.Model):
 
     def campements_autorises(self):
         """
-        None = toute l'exploitation (Big Boss) ; sinon la liste des campements dont le compte est responsable (vide si aucun).
+        None = toute l'exploitation (Super admin) ; sinon la liste des campements dont le compte est responsable (vide si aucun).
         Un responsable gère tous les blocs de ses campements et peut en gérer plusieurs.
         """
         if self.is_big_boss:

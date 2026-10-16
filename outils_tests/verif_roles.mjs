@@ -30,7 +30,7 @@ async function connexion(email, mdp) {
   await page.waitForFunction(() => location.pathname === '/dashboard', { timeout: 20000 });
 }
 
-// ---------------- Big Boss ----------------
+// ---------------- Super admin ----------------
 await connexion('admin@allakro.com', 'Allakro@2025');
 await page.goto(`${BASE}/campements`, { waitUntil: 'networkidle0' });
 await cliquer('Nouveau campement');
@@ -47,7 +47,8 @@ const options = await page.evaluate(async () => {
 console.log('Options du responsable :', JSON.stringify(options));
 verifier(Array.isArray(options), 'Champ « Responsable » trouvé');
 const personnes = (options || []).filter((o) => o && !/^(Choisir|Rechercher|Aucun)/.test(o));
-verifier(personnes.length === 1 && /Jean|Kouassi/.test(personnes[0]), 'Seuls les utilisateurs superviseurs sont proposés', personnes.join(' | '));
+// Responsables possibles : les utilisateurs actifs (superviseurs et Super admin), jamais une personne sans compte
+verifier(personnes.length >= 2 && personnes.some((o) => /Jean|Kouassi/.test(o)) && personnes.every((o) => /Superviseur|Super admin/.test(o)), 'Seuls des utilisateurs (superviseurs, Super admin) sont proposés comme responsables', personnes.join(' | '));
 verifier(/plusieurs campements/.test(await texte()), 'Mention « peut gérer plusieurs campements »');
 await page.screenshot({ path: join(SORTIE, '1_campement_responsable.png') });
 await cliquer('Annuler');
@@ -77,9 +78,9 @@ await page.evaluate(() => fetch('/api/v1/auth/logout/', { method: 'POST' }).catc
 await connexion('k.jean@allakro.com', 'Superviseur@2025');
 await page.goto(`${BASE}/blocs`, { waitUntil: 'networkidle0' });
 const t = await texte();
-verifier(!/Nouveau bloc/.test(t), 'Superviseur : pas de bouton « Nouveau bloc »');
+verifier(/Nouveau bloc/.test(t), 'Superviseur : peut créer un bloc (bouton « Nouveau bloc »)');
 const modifs = await page.evaluate(() => [...document.querySelectorAll('button')].filter((b) => /Modifier/i.test(b.getAttribute('aria-label') || b.title || '')).length);
-verifier(modifs === 0, 'Superviseur : pas de bouton Modifier sur les blocs', String(modifs));
+verifier(modifs > 0, 'Superviseur : peut modifier les blocs de son campement', String(modifs));
 await page.screenshot({ path: join(SORTIE, '3_blocs_superviseur.png') });
 await page.goto(`${BASE}/campements`, { waitUntil: 'networkidle0' });
 await pause(500);

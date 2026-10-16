@@ -48,7 +48,8 @@ export default function DashboardPage() {
   const campementsAvecDepenses = data.depensesParCampement.filter((d) => d.value > 0);
   const isBoss = user?.role === ROLE.BIG_BOSS;
 
-  if (error) return <ErrorState message={error.message} onRetry={() => window.location.reload()} />;
+  // 403 = droits ou affectation manquants (ex. superviseur sans campement) : réessayer n'y changerait rien
+  if (error) return <ErrorState message={error.message} onRetry={error.status === 403 ? undefined : () => window.location.reload()} />;
 
   return (
     <div className="space-y-4 sm:space-y-5">
