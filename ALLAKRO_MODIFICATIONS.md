@@ -621,6 +621,9 @@ Demande : régler tous les problèmes de sécurité de l'audit et les améliorat
 - **Pour le client déjà en ligne** : vider la base (Neon) puis redéployer recrée le compte depuis les variables `BIG_BOSS_1_*` ; la migration 0010 s'applique au démarrage.
 
 
+### 14.11 Superficies indépendantes (16 octobre 2026)
+- Suppression des contrôles de cohérence entre superficies (campements ≤ plantation, blocs ≤ campement, et interdiction de réduire sous le total des éléments) : chaque superficie se saisit librement, pour pouvoir les calculer selon la définition propre à l'exploitation. Seules restent : valeur positive, et superficie obligatoire pour un bloc. Test `test_superficies_independantes` ; 162 tests backend.
+
 ## Guide utilisateur client (hors dépôt)
 
 Guide PDF + Word (51 pages, parties Super admin / responsable) et guide « Super admin seul » (47 pages) créé dans `Desktop\Guide ALLAKRO\` (volontairement hors GitHub, dépôt public). Captures automatiques sur base de démo (`source\captures.mjs`). Correctif lié trouvé pendant les captures : animation d entrée de page en fill-mode `backwards` (les fenêtres plein écran étaient cassées avec `both`).

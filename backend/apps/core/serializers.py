@@ -1,7 +1,4 @@
-from decimal import Decimal
-
 from django.db import transaction
-from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -9,12 +6,6 @@ from . import services
 from . import validators as v
 from .models import Bloc, Campement, Equipe, Fonction, Personne, Plantation
 from .utils import normaliser_espaces, normaliser_libelle
-
-
-def somme_superficies(queryset, exclude=None):
-    if exclude is not None:
-        queryset = queryset.exclude(pk=exclude.pk)
-    return queryset.aggregate(total=Sum('superficie'))['total'] or Decimal('0')
 
 
 class PlantationSerializer(serializers.ModelSerializer):
@@ -32,13 +23,8 @@ class PlantationSerializer(serializers.ModelSerializer):
         return v.unique_insensible(Plantation.objects, 'nom', value, self.instance, 'Une plantation porte déjà ce nom.')
 
     def validate_superficie(self, value):
-        v.positif_ou_nul(value, 'La superficie')
-        if self.instance and value > 0:
-            occupee = somme_superficies(self.instance.campements.all())
-            if value < occupee:
-                raise serializers.ValidationError(
-                    f"Inférieure à la superficie totale de ses campements ({occupee} ha).")
-        return value
+        # Les superficies sont indépendantes : aucune n'est comparée à celle de la plantation, du campement ou des blocs
+        return v.positif_ou_nul(value, 'La superficie')
 
 
 class CampementSerializer(serializers.ModelSerializer):
@@ -67,7 +53,6 @@ class CampementSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         plantation = attrs.get('plantation', getattr(self.instance, 'plantation', None))
         nom = attrs.get('nom', getattr(self.instance, 'nom', ''))
-        superficie = attrs.get('superficie', getattr(self.instance, 'superficie', Decimal('0')))
 
         if 'plantation' in attrs and (self.instance is None or self.instance.plantation_id != plantation.pk):
             v.actif(plantation, 'Cette plantation')
@@ -85,19 +70,6 @@ class CampementSerializer(serializers.ModelSerializer):
                                 'Un campement de cette plantation porte déjà ce nom.')
         except serializers.ValidationError as exc:
             raise serializers.ValidationError({'nom': exc.detail})
-
-        # La somme des superficies des campements ne peut pas dépasser celle de la plantation
-        if plantation.superficie > 0 and superficie > 0:
-            autres = somme_superficies(plantation.campements.all(), exclude=self.instance)
-            if autres + superficie > plantation.superficie:
-                disponible = max(plantation.superficie - autres, Decimal('0'))
-                raise serializers.ValidationError({'superficie': (
-                    f"Dépasse la superficie de la plantation « {plantation.nom} » "
-                    f"({plantation.superficie} ha, {disponible} ha encore disponibles).")})
-        if self.instance and superficie > 0:
-            occupee = somme_superficies(self.instance.blocs.all())
-            if superficie < occupee:
-                raise serializers.ValidationError({'superficie': f"Inférieure à la superficie de ses blocs ({occupee} ha)."})
         return attrs
 
     @staticmethod
@@ -168,7 +140,6 @@ class BlocSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         campement = attrs.get('campement', getattr(self.instance, 'campement', None))
         nom = attrs.get('nom', getattr(self.instance, 'nom', ''))
-        superficie = attrs.get('superficie', getattr(self.instance, 'superficie', Decimal('0')))
         change_campement = self.instance is not None and 'campement' in attrs and self.instance.campement_id != campement.pk
 
         if self.instance is None or change_campement:
@@ -181,14 +152,6 @@ class BlocSerializer(serializers.ModelSerializer):
             v.unique_insensible(campement.blocs, 'nom', nom, self.instance, 'Un bloc de ce campement porte déjà ce nom.')
         except serializers.ValidationError as exc:
             raise serializers.ValidationError({'nom': exc.detail})
-
-        if campement.superficie > 0 and superficie > 0:
-            autres = somme_superficies(campement.blocs.all(), exclude=self.instance)
-            if autres + superficie > campement.superficie:
-                disponible = max(campement.superficie - autres, Decimal('0'))
-                raise serializers.ValidationError({'superficie': (
-                    f"Dépasse la superficie du campement « {campement.nom} » "
-                    f"({campement.superficie} ha, {disponible} ha encore disponibles).")})
         return attrs
 
 

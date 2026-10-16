@@ -12,14 +12,17 @@ class ExploitationTests(ApiTestCase):
         self.assertEqual(self.personnes[0]['matricule'], 'MAT-0003')  # 2 personnes déjà créées pour les comptes
         self.assertEqual(self.get('blocs/prochain-code/')['code'], 'BLC-003')
 
-    def test_superficies_coherentes(self):
+    def test_superficies_independantes(self):
+        """Aucune superficie n'est comparée à celle du niveau au-dessus ou en dessous : elles se saisissent librement."""
         self.referentiel()
-        errors = self.post('campements/', {'nom': 'Camp B', 'plantation_id': self.plantation['id'], 'superficie': 50,
-                                                       'responsable_id': self.admin.personne_id}, status=400)
-        self.assertIn('superficie', errors)
-        errors = self.post('blocs/', {'nom': 'A3', 'campement_id': self.campement['id'], 'superficie': 30,
-                                      'nombre_plantes': 10}, status=400)
-        self.assertIn('superficie', errors)
+        grand = self.post('campements/', {'nom': 'Camp B', 'plantation_id': self.plantation['id'], 'superficie': 5000,
+                                          'responsable_id': self.admin.personne_id})
+        self.assertEqual(float(grand['superficie']), 5000)
+        bloc = self.post('blocs/', {'nom': 'A3', 'campement_id': self.campement['id'], 'superficie': 3000, 'nombre_plantes': 10})
+        self.assertEqual(float(bloc['superficie']), 3000)
+        # Réduire la superficie d'une plantation ou d'un campement en dessous de celle de ses éléments est permis
+        self.assertEqual(float(self.patch(f"plantations/{self.plantation['id']}/", {'superficie': 1})['superficie']), 1)
+        self.assertEqual(float(self.patch(f"campements/{self.campement['id']}/", {'superficie': 1})['superficie']), 1)
 
     def test_nom_de_bloc_unique_dans_le_campement(self):
         self.referentiel()
