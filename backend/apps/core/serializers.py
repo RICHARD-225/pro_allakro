@@ -8,8 +8,15 @@ from .models import Bloc, Campement, Equipe, Fonction, Personne, Plantation
 from .utils import normaliser_espaces, normaliser_libelle
 
 
+def superficie_calculee(obj):
+    """Superficie d'une plantation ou d'un campement = somme de ses blocs : valeur annotée par la vue, sinon calculée."""
+    valeur = getattr(obj, 'superficie_calculee', None)
+    return float(valeur if valeur is not None else obj.superficie_totale())
+
+
 class PlantationSerializer(serializers.ModelSerializer):
     nb_campements = serializers.IntegerField(read_only=True, default=0)
+    superficie = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(source='date_creation', read_only=True)
 
     class Meta:
@@ -18,13 +25,12 @@ class PlantationSerializer(serializers.ModelSerializer):
                   'actif', 'nb_campements', 'created_at']
         read_only_fields = ['code']
 
+    def get_superficie(self, obj):
+        return superficie_calculee(obj)
+
     def validate_nom(self, value):
         value = v.texte_obligatoire(value, 'Le nom')
         return v.unique_insensible(Plantation.objects, 'nom', value, self.instance, 'Une plantation porte déjà ce nom.')
-
-    def validate_superficie(self, value):
-        # Les superficies sont indépendantes : aucune n'est comparée à celle de la plantation, du campement ou des blocs
-        return v.positif_ou_nul(value, 'La superficie')
 
 
 class CampementSerializer(serializers.ModelSerializer):
@@ -33,6 +39,7 @@ class CampementSerializer(serializers.ModelSerializer):
     responsable_id = v.RelatedField(source='responsable', queryset=Personne.objects.all())
     responsable_nom = serializers.SerializerMethodField()
     nb_blocs = serializers.IntegerField(read_only=True, default=0)
+    superficie = serializers.SerializerMethodField()
     created_at = serializers.DateTimeField(source='date_creation', read_only=True)
 
     class Meta:
@@ -44,11 +51,11 @@ class CampementSerializer(serializers.ModelSerializer):
     def get_responsable_nom(self, obj):
         return obj.responsable.nom_complet if obj.responsable else None
 
+    def get_superficie(self, obj):
+        return superficie_calculee(obj)
+
     def validate_nom(self, value):
         return v.texte_obligatoire(value, 'Le nom')
-
-    def validate_superficie(self, value):
-        return v.positif_ou_nul(value, 'La superficie')
 
     def validate(self, attrs):
         plantation = attrs.get('plantation', getattr(self.instance, 'plantation', None))

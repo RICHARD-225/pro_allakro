@@ -11,10 +11,30 @@ from .models import MouvementStock, Produit
 
 
 class ProduitSerializer(serializers.ModelSerializer):
+    # Quantité déjà en magasin à la création du produit : elle devient une entrée « Stock initial » (le stock n'est jamais saisi
+    # directement, il se calcule à partir des mouvements). Ignorée à la modification : le stock évolue alors par mouvements.
+    quantite_initiale = serializers.DecimalField(max_digits=15, decimal_places=3, write_only=True, required=False, allow_null=True,
+                                                 min_value=Decimal('0'), error_messages={'min_value': 'La quantité ne peut pas être négative.',
+                                                                                         'invalid': 'Quantité invalide.'})
+
     class Meta:
         model = Produit
-        fields = ['id', 'code', 'nom', 'categorie', 'unite', 'prix_unitaire', 'stock_minimum', 'actif', 'description']
+        fields = ['id', 'code', 'nom', 'categorie', 'unite', 'prix_unitaire', 'stock_minimum', 'actif', 'description', 'quantite_initiale']
         read_only_fields = ['code']
+
+    @transaction.atomic
+    def create(self, validated_data):
+        quantite = validated_data.pop('quantite_initiale', None)
+        produit = super().create(validated_data)
+        if quantite and quantite > 0:
+            MouvementStock.objects.create(
+                produit=produit, type_mouvement=MouvementStock.TypeMouvement.ENTREE, quantite=quantite, prix_unitaire=produit.prix_unitaire,
+                date_mouvement=timezone.localdate(), motif='Stock initial')
+        return produit
+
+    def update(self, instance, validated_data):
+        validated_data.pop('quantite_initiale', None)
+        return super().update(instance, validated_data)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

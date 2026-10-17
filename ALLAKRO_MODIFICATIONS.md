@@ -621,8 +621,31 @@ Demande : régler tous les problèmes de sécurité de l'audit et les améliorat
 - **Pour le client déjà en ligne** : vider la base (Neon) puis redéployer recrée le compte depuis les variables `BIG_BOSS_1_*` ; la migration 0010 s'applique au démarrage.
 
 
-### 14.11 Superficies indépendantes (16 octobre 2026)
+### 14.11 Superficies indépendantes (16 octobre 2026) — remplacé par 14.12
 - Suppression des contrôles de cohérence entre superficies (campements ≤ plantation, blocs ≤ campement, et interdiction de réduire sous le total des éléments) : chaque superficie se saisit librement, pour pouvoir les calculer selon la définition propre à l'exploitation. Seules restent : valeur positive, et superficie obligatoire pour un bloc. Test `test_superficies_independantes` ; 162 tests backend.
+
+### 14.12 Superficie calculée à partir des blocs (16 octobre 2026)
+- **Plus de champ superficie** dans les formulaires de plantation et de campement ; les colonnes `superficie` (et leurs contraintes) sont **supprimées** de ces deux tables (migration `core.0011_superficie_calculee`). Les valeurs déjà saisies à ces niveaux sont perdues : elles sont remplacées par le calcul.
+- **Calcul** : superficie d'un campement = somme des superficies de ses blocs ; superficie d'une plantation = somme des blocs de tous ses campements. L'API la renvoie toujours dans le champ `superficie` (lecture seule), calculée par sous-requête dans les listes (comptages `nb_blocs` / `nb_campements` non multipliés par les jointures) et par agrégat sur une fiche. Une superficie envoyée à ces deux niveaux est ignorée.
+- Seule la superficie du **bloc** est saisie : obligatoire, supérieure à 0.
+- Interface : listes, fiches et arbre affichent la valeur calculée ; la fiche d'un campement l'intitule « Superficie (somme des blocs) ».
+- Tests : `test_superficie_calculee_a_partir_des_blocs` (sommes, comptages non multipliés, mise à jour quand un bloc change, valeur envoyée ignorée).
+
+
+### 14.13 Liste des campements plus lisible (16 octobre 2026)
+- Chaque ligne a une **vignette** (`components/VignetteCampement.jsx`) : tuile à bordure verte avec l'icône du campement et, en coin, le nombre de blocs ; grisée si le campement est inactif. Sous le nom : code, plantation et **localisation** (icône repère).
+- Le **responsable** s'affiche avec ses initiales dans une pastille ; la superficie calculée est remplacée par « — » quand le campement n'a pas encore de bloc.
+- **Bandeau de totaux** au-dessus de la liste : campements, blocs, superficie (somme des blocs), responsables.
+- Vérifié dans le navigateur à 1 440 px (clair et sombre) et 390 px (aucun débordement horizontal). Ce ne sont pas des photos : l'application ne gère pas de téléversement d'images (l'hébergement gratuit n'a pas de disque durable).
+- Tests : 164 backend ; E2E 202/202 sur base fraîche (il exige une base rechargée par `seed_allakro --reset` : sur une base déjà utilisée par d'autres scripts, 2 vérifications de la fiche rémunération peuvent échouer) ; `verif_exploitation` 28/28, `verif_responsable_auto` 5/5, `verif_roles` 13/13, balayage sans erreur.
+
+
+### 14.14 Quantité à la création d'un produit ; rémunérations soldées (17 octobre 2026)
+- **Produit** : le formulaire « Nouveau produit » propose **Quantité en stock**. Le stock n'est jamais saisi directement (il reste calculé à partir des mouvements) : la quantité devient une **entrée « Stock initial »** (date du jour, prix du produit, sans bloc). Ignorée à la modification ; négative = refusée ; vide ou 0 = aucun mouvement. API : champ `quantite_initiale` (écriture seule). Test `test_quantite_en_stock_a_la_creation_du_produit`.
+- **Rémunérations** : une rémunération **entièrement payée** quitte l'onglet « Rémunérations » (elle n'est plus à régler) ; ses paiements restent dans « Paiements effectués ». Elle y **revient** si un paiement est annulé (l'état est recalculé à chaque affichage). Le filtre de statut « Payé » permet de la revoir. Paramètre `masquer_soldees` de `GET /salaires/` (liste seulement : les indicateurs du haut de page portent sur toutes les rémunérations). Test `test_remuneration_soldee_quitte_la_liste_et_revient_si_le_paiement_est_annule` ; `outils_tests/verif_soldees.mjs` (10 vérifications).
+- Vérifié : tests du module salaires 14/14, stock 3/3, E2E 202/202 sur base fraîche ; suite backend complète non relancée après ces deux changements (hors modules touchés).
+- Guides : chapitre Stock réécrit (explication des entrées, sorties et ajustements avec un exemple chiffré, capture du formulaire produit) ; chapitre Salaires complété.
+
 
 ## Guide utilisateur client (hors dépôt)
 

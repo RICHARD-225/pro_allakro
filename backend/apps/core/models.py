@@ -18,7 +18,6 @@ class Plantation(AutoCodeMixin, models.Model):
     code = models.CharField(max_length=30, unique=True, blank=True)
     nom = models.CharField(max_length=255)
     localisation = models.CharField(max_length=255, blank=True)
-    superficie = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     unite_superficie = models.CharField(max_length=30, default="ha")
     description = models.TextField(blank=True)
     actif = models.BooleanField(default=True)
@@ -28,7 +27,10 @@ class Plantation(AutoCodeMixin, models.Model):
     class Meta:
         db_table = "plantation"
         ordering = ["nom"]
-        constraints = [models.CheckConstraint(condition=models.Q(superficie__gte=0), name="ck_plantation_superficie_positive")]
+
+    def superficie_totale(self):
+        """Superficie calculée : somme des superficies des blocs de tous ses campements (rien n'est saisi à ce niveau)."""
+        return Bloc.objects.filter(campement__plantation=self).aggregate(t=models.Sum('superficie'))['t'] or 0
 
     def __str__(self):
         return self.nom
@@ -48,7 +50,6 @@ class Campement(AutoCodeMixin, models.Model):
     code = models.CharField(max_length=30, unique=True, blank=True)
     nom = models.CharField(max_length=255)
     localisation = models.CharField(max_length=255, blank=True)
-    superficie = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     description = models.TextField(blank=True)
     actif = models.BooleanField(default=True)
     date_creation = models.DateTimeField(auto_now_add=True)
@@ -57,7 +58,10 @@ class Campement(AutoCodeMixin, models.Model):
     class Meta:
         db_table = "campement"
         ordering = ["nom"]
-        constraints = [models.CheckConstraint(condition=models.Q(superficie__gte=0), name="ck_campement_superficie_positive")]
+
+    def superficie_totale(self):
+        """Superficie calculée : somme des superficies de ses blocs (rien n'est saisi à ce niveau)."""
+        return self.blocs.aggregate(t=models.Sum('superficie'))['t'] or 0
 
     def __str__(self):
         return self.nom

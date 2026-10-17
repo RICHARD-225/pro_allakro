@@ -71,11 +71,11 @@ class Command(BaseCommand):
         j = lambda decalage: (aujourdhui + timedelta(days=decalage)).isoformat()  # noqa: E731
 
         # --- Exploitation : 3 plantations, 3 campements, 3 blocs (un par campement) ---
-        plantations = [c(PlantationSerializer, {'nom': nom, 'localisation': "Côte d'Ivoire", 'superficie': superficie})
+        plantations = [c(PlantationSerializer, {'nom': nom, 'localisation': "Côte d'Ivoire"})
                        for nom, superficie in (('ALLAKRO Nord', 1250), ('ALLAKRO Centre', 750), ('ALLAKRO Sud', 980))]
         # Un campement a toujours un responsable : un compte existant (le premier) au départ, réparti ensuite entre les comptes
         premier = comptes[0].personne
-        campements = [c(CampementSerializer, {'nom': nom, 'plantation_id': plantation.pk, 'superficie': superficie, 'responsable_id': premier.pk})
+        campements = [c(CampementSerializer, {'nom': nom, 'plantation_id': plantation.pk, 'responsable_id': premier.pk})
                       for (nom, superficie), plantation in zip((('Campement Nord', 450), ('Campement Centre', 320), ('Campement Sud', 380)), plantations)]
         # Densité : environ 143 plants à l'hectare (palmier) ou 550 (hévéa)
         blocs = [c(BlocSerializer, {'nom': nom, 'campement_id': campement.pk, 'superficie': superficie, 'nombre_plantes': superficie * densite})

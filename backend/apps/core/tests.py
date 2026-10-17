@@ -12,17 +12,27 @@ class ExploitationTests(ApiTestCase):
         self.assertEqual(self.personnes[0]['matricule'], 'MAT-0003')  # 2 personnes déjà créées pour les comptes
         self.assertEqual(self.get('blocs/prochain-code/')['code'], 'BLC-003')
 
-    def test_superficies_independantes(self):
-        """Aucune superficie n'est comparée à celle du niveau au-dessus ou en dessous : elles se saisissent librement."""
-        self.referentiel()
-        grand = self.post('campements/', {'nom': 'Camp B', 'plantation_id': self.plantation['id'], 'superficie': 5000,
-                                          'responsable_id': self.admin.personne_id})
-        self.assertEqual(float(grand['superficie']), 5000)
-        bloc = self.post('blocs/', {'nom': 'A3', 'campement_id': self.campement['id'], 'superficie': 3000, 'nombre_plantes': 10})
-        self.assertEqual(float(bloc['superficie']), 3000)
-        # Réduire la superficie d'une plantation ou d'un campement en dessous de celle de ses éléments est permis
-        self.assertEqual(float(self.patch(f"plantations/{self.plantation['id']}/", {'superficie': 1})['superficie']), 1)
-        self.assertEqual(float(self.patch(f"campements/{self.campement['id']}/", {'superficie': 1})['superficie']), 1)
+    def test_superficie_calculee_a_partir_des_blocs(self):
+        """Plantation et campement n'ont pas de superficie saisie : c'est la somme de leurs blocs (aucune contrainte entre niveaux)."""
+        self.referentiel()  # un campement avec deux blocs de 20 ha
+        self.assertEqual(float(self.get(f"campements/{self.campement['id']}/")['superficie']), 40)
+        self.assertEqual(float(self.get(f"plantations/{self.plantation['id']}/")['superficie']), 40)
+        # Un second campement avec un bloc de 3 000 ha : aucune limite n'est imposée, les sommes suivent
+        autre = self.post('campements/', {'nom': 'Camp B', 'plantation_id': self.plantation['id'], 'responsable_id': self.admin.personne_id})
+        self.assertEqual(float(autre['superficie']), 0)
+        self.post('blocs/', {'nom': 'B1', 'campement_id': autre['id'], 'superficie': 3000, 'nombre_plantes': 10})
+        campements = {c['id']: c for c in self.get('campements/')}
+        self.assertEqual(float(campements[self.campement['id']]['superficie']), 40)
+        self.assertEqual(float(campements[autre['id']]['superficie']), 3000)
+        self.assertEqual(campements[self.campement['id']]['nb_blocs'], 2)  # le comptage n'est pas multiplié par la jointure
+        plantation = next(p for p in self.get('plantations/') if p['id'] == self.plantation['id'])
+        self.assertEqual(float(plantation['superficie']), 3040)
+        self.assertEqual(plantation['nb_campements'], 2)
+        # Une superficie envoyée pour une plantation ou un campement est ignorée
+        self.assertEqual(float(self.patch(f"plantations/{self.plantation['id']}/", {'superficie': 1})['superficie']), 3040)
+        # Modifier un bloc met à jour les totaux
+        self.patch(f"blocs/{self.bloc['id']}/", {'superficie': 30})
+        self.assertEqual(float(self.get(f"campements/{self.campement['id']}/")['superficie']), 50)
 
     def test_nom_de_bloc_unique_dans_le_campement(self):
         self.referentiel()
@@ -40,10 +50,10 @@ class ExploitationTests(ApiTestCase):
         self.assertEqual(self.patch(f"blocs/{bloc['id']}/", {'nombre_plantes': 1500})['nombre_plantes'], 1500)
         self.assertEqual(next(b for b in self.get('blocs/') if b['id'] == bloc['id'])['nombre_plantes'], 1500)
 
-    def test_superficie_facultative_sauf_pour_les_blocs_et_localisation(self):
+    def test_superficie_obligatoire_pour_un_bloc_et_localisation(self):
         self.referentiel()
         plantation = self.post('plantations/', {'nom': 'Sans surface'})
-        self.assertEqual(float(plantation['superficie']), 0)
+        self.assertEqual(float(plantation['superficie']), 0)  # aucun bloc : superficie calculée nulle
         campement = self.post('campements/', {'nom': 'Camp libre', 'plantation_id': plantation['id'],
                                               'responsable_id': self.admin.personne_id, 'localisation': 'Route de Daloa'})
         self.assertEqual(campement['localisation'], 'Route de Daloa')

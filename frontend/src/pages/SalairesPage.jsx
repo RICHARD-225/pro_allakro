@@ -58,7 +58,8 @@ export default function SalairesPage() {
   const rem = useListeServeur({
     charger: (p) => salairesService.page(p),
     totaux: (p) => salairesService.totaux(p),
-    filtres: { statut: filtreStatut, ...filtresLieu },
+    // Sans filtre de statut, les rémunérations entièrement payées sont masquées : elles sont dans « Paiements effectués »
+    filtres: { statut: filtreStatut, masquer_soldees: filtreStatut ? '' : 'true', ...filtresLieu },
     actif: !periodeInvalide,
   });
   const pai = useListeServeur({
@@ -306,6 +307,13 @@ export default function SalairesPage() {
       </div>
 
       {onglet === 'remunerations' ? (
+        <>
+        {!filtreStatut && (
+          <p className="text-sm text-ink-500">
+            Les rémunérations entièrement payées passent dans « Paiements effectués ». Elles reviennent ici si un paiement est annulé
+            (choisissez le statut « Payé » pour les voir quand même).
+          </p>
+        )}
         <DataTable
           columns={colonnesRemunerations}
           data={rem.lignes}
@@ -321,6 +329,7 @@ export default function SalairesPage() {
           emptyMessage="Les travaux génèrent leur rémunération ; « Nouvelle rémunération » pour une saisie manuelle."
           emptyAction={<Button size="sm" onClick={() => setRemuneration(true)}><Plus size={14} /> Nouvelle rémunération</Button>}
         />
+        </>
       ) : (
         <>
           <p className="text-sm text-ink-500">

@@ -16,7 +16,7 @@ import { formatNumber } from '@/utils/format';
 import { showServerErrors, today } from '@/utils/errors';
 import { ROLE } from '@/constants';
 
-const emptyProduit = () => ({ nom: '', categorie: '', unite: '', stock_minimum: '', prix_unitaire: '', actif: true });
+const emptyProduit = () => ({ nom: '', categorie: '', unite: '', quantite_initiale: '', stock_minimum: '', prix_unitaire: '', actif: true });
 const emptyMouvement = () => ({ produit_id: '', type_mouvement: '', quantite: '', stock_constate: '', motif: '', date: today(), campement_id: '', bloc_id: '' });
 
 export default function StockPage() {
@@ -133,6 +133,7 @@ export default function StockPage() {
     if (!formP.unite) errs.unite = "L'unité est obligatoire";
     if (formP.stock_minimum === '' || Number(formP.stock_minimum) < 0) errs.stock_minimum = 'Le seuil doit être positif';
     if (Number(formP.prix_unitaire) < 0) errs.prix_unitaire = 'Le prix doit être positif';
+    if (Number(formP.quantite_initiale) < 0) errs.quantite_initiale = 'La quantité doit être positive';
     setFormErrorsP(errs);
     return Object.keys(errs).length === 0;
   };
@@ -146,6 +147,7 @@ export default function StockPage() {
       unite: formP.unite,
       stock_minimum: Number(formP.stock_minimum),
       prix_unitaire: Number(formP.prix_unitaire) || 0,
+      ...(produitEnModification ? {} : { quantite_initiale: Number(formP.quantite_initiale) || 0 }),
       ...(produitEnModification ? { actif: formP.actif } : {}),
     };
     try {
@@ -155,8 +157,10 @@ export default function StockPage() {
         toast.success(`Produit ${produitEdite.code} modifié`);
       } else {
         const item = await produitsService.create(payload);
-        setProduits((list) => [...list, item].sort((a, b) => a.nom.localeCompare(b.nom)));
-        toast.success(`Produit ${item.code} ajouté — enregistrez une entrée pour l'approvisionner`);
+        await load(); // le produit et, s'il y a une quantité, son entrée « Stock initial »
+        toast.success(payload.quantite_initiale > 0
+          ? `Produit ${item.code} ajouté avec ${formatNumber(payload.quantite_initiale)} ${item.unite} en stock`
+          : `Produit ${item.code} ajouté — enregistrez une entrée pour l'approvisionner`);
       }
       setProduitEdite(null);
     } catch (err) {

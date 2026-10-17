@@ -75,7 +75,7 @@ class Command(BaseCommand):
 
         # --- Exploitation : plantations, campements, blocs (avec leur nombre de plantes) ---
         for key, nom, superficie in (('P1', 'ALLAKRO Nord', 1250), ('P2', 'ALLAKRO Sud', 980), ('P3', 'ALLAKRO Centre', 750)):
-            ids[key] = c(PlantationSerializer, {'nom': nom, 'localisation': "Côte d'Ivoire", 'superficie': superficie}).pk
+            ids[key] = c(PlantationSerializer, {'nom': nom, 'localisation': "Côte d'Ivoire"}).pk
         campements = (('C1', 'Campement Nord', 'P1', 450), ('C2', 'Campement Sud', 'P2', 380),
                       ('C3', 'Campement Central', 'P3', 320), ('C4', 'Campement Est', 'P1', 280),
                       ('C5', 'Campement Ouest', 'P2', 220))
@@ -84,7 +84,7 @@ class Command(BaseCommand):
         admin = Personne.objects.create(nom='ALLAKRO', prenom='Admin', date_embauche='2023-01-01')
         ids['ADMIN'] = admin.pk
         for key, nom, plantation, superficie in campements:
-            ids[key] = Campement.objects.create(nom=nom, plantation_id=ids[plantation], superficie=superficie, responsable=admin).pk
+            ids[key] = Campement.objects.create(nom=nom, plantation_id=ids[plantation], responsable=admin).pk
         # Palmier à huile : environ 143 plants par hectare ; hévéa : environ 550
         blocs = (('B1', 'Bloc A1', 'C1', 45, 143), ('B2', 'Bloc A2', 'C1', 38, 143), ('B3', 'Bloc A3', 'C1', 52, 143),
                  ('B4', 'Bloc B1', 'C2', 41, 550), ('B5', 'Bloc B2', 'C2', 36, 550), ('B6', 'Bloc C1', 'C3', 48, 550),

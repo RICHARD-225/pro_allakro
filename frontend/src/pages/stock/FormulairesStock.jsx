@@ -33,6 +33,13 @@ export function ProduitFormulaire({ produitEdite, enModification, form, setForm,
           <Select label="Catégorie" required options={CATEGORIES} placeholder="Choisir" value={form.categorie} onChange={(e) => setForm({ ...form, categorie: e.target.value })} error={formErrors.categorie} />
           <Select label="Unité" required options={UNITES} placeholder="Choisir" value={form.unite} onChange={(e) => setForm({ ...form, unite: e.target.value })} error={formErrors.unite} />
         </div>
+        {!enModification && (
+          <Input
+            label={`Quantité en stock${form.unite ? ` (${form.unite})` : ''}`} type="number" min="0" step="any" placeholder="0"
+            value={form.quantite_initiale} onChange={(e) => setForm({ ...form, quantite_initiale: e.target.value })} error={formErrors.quantite_initiale}
+            hint="Ce que vous avez déjà en magasin. Elle est enregistrée comme une entrée « Stock initial » ; laissez vide si le produit n'est pas encore arrivé."
+          />
+        )}
         <div className="grid grid-cols-2 gap-3">
           <Input label="Seuil d'alerte" required type="number" min="0" step="any" placeholder="0" value={form.stock_minimum} onChange={(e) => setForm({ ...form, stock_minimum: e.target.value })} error={formErrors.stock_minimum} />
           <Input label="Prix unitaire (FCFA)" type="number" min="0" placeholder="0" value={form.prix_unitaire} onChange={(e) => setForm({ ...form, prix_unitaire: e.target.value })} error={formErrors.prix_unitaire} />
@@ -44,7 +51,7 @@ export function ProduitFormulaire({ produitEdite, enModification, form, setForm,
             Produit en stock (décochez pour le retirer du stock)
           </label>
         ) : (
-          <p className="text-xs text-ink-500">Le stock démarre à 0 : il évolue avec les mouvements d'entrée et de sortie.</p>
+          <p className="text-xs text-ink-500">Ensuite, le stock évolue avec les mouvements : une entrée quand vous recevez du produit, une sortie quand vous l'utilisez.</p>
         )}
       </div>
     </Modal>

@@ -161,6 +161,11 @@ class SalaireViewSet(BaseViewSet):
             if statut not in conditions:
                 raise serializers.ValidationError({'statut': 'Statut inconnu.'})
             queryset = queryset.filter(conditions[statut])
+        if params.get('masquer_soldees') and self.action == 'list':
+            # Une rémunération entièrement payée quitte la liste des rémunérations (ses paiements restent dans « Paiements effectués »).
+            # Elle y revient d'elle-même si un paiement est annulé : l'état est recalculé à chaque affichage. Les indicateurs
+            # (route totaux) ne sont pas concernés : ils portent sur toutes les rémunérations.
+            queryset = queryset.exclude(annulee_sql=False, paye_sql__gte=F('montant_net'), paye_sql__gt=0)
         if params.get('a_payer'):
             # Rémunérations qui peuvent encore être payées (fenêtre « Nouveau paiement »)
             queryset = queryset.filter(annulee_sql=False, reste_sql__gt=0)

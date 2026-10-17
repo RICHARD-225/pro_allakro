@@ -1,4 +1,7 @@
-from django.db.models import Count, Q
+from decimal import Decimal
+
+from django.db.models import Count, DecimalField, OuterRef, Q, Subquery, Sum, Value
+from django.db.models.functions import Coalesce
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -17,8 +20,17 @@ from .serializers import (
 from .unites import UNITE_PAR_DEFAUT, UNITES
 
 
+def somme_blocs(champ):
+    """Sous-requête : somme des superficies des blocs dont `champ` (ex. campement) désigne la ligne courante (0 s'il n'y en a pas)."""
+    total = Bloc.objects.filter(**{champ: OuterRef('pk')}).order_by().values(champ).annotate(t=Sum('superficie')).values('t')[:1]
+    decimal = DecimalField(max_digits=14, decimal_places=2)
+    return Coalesce(Subquery(total, output_field=decimal), Value(Decimal('0')), output_field=decimal)
+
+
 class PlantationViewSet(CodePreviewMixin, BaseViewSet):
-    queryset = Plantation.objects.annotate(nb_campements=Count('campements')).order_by('nom')
+    queryset = Plantation.objects.annotate(
+        nb_campements=Count('campements', distinct=True), superficie_calculee=somme_blocs('campement__plantation'),
+    ).order_by('nom')
     serializer_class = PlantationSerializer
     audit_label = 'Plantation'
     ordre_defaut = ('-date_creation', '-id')
@@ -30,7 +42,9 @@ class PlantationViewSet(CodePreviewMixin, BaseViewSet):
 
 
 class CampementViewSet(CodePreviewMixin, BaseViewSet):
-    queryset = Campement.objects.select_related('plantation', 'responsable').annotate(nb_blocs=Count('blocs')).order_by('nom')
+    queryset = Campement.objects.select_related('plantation', 'responsable').annotate(
+        nb_blocs=Count('blocs', distinct=True), superficie_calculee=somme_blocs('campement'),
+    ).order_by('nom')
     serializer_class = CampementSerializer
     audit_label = 'Campement'
     filter_map = {'plantation_id': 'plantation_id'}

@@ -60,15 +60,14 @@ try {
   await cliquer('Nouvelle plantation');
   await pause(300);
   const labelsPlantation = await page.evaluate(() => [...document.querySelectorAll('[role=dialog] label')].map((l) => l.textContent.replace(/\*/g, '').trim()));
-  verifier(labelsPlantation.includes('Superficie (ha)'), 'Plantation : champ superficie présent');
-  verifier(!(await page.evaluate(() => [...document.querySelectorAll('[role=dialog] label')].some((l) => l.textContent.includes('Superficie') && l.textContent.includes('*')))),
-    'Plantation : superficie facultative (pas d’étoile)');
+  verifier(!labelsPlantation.some((l) => l.includes('Superficie')), 'Plantation : plus de champ superficie (calculée à partir des blocs)');
   await page.keyboard.press('Escape');
   await pause(400);
   await page.evaluate(() => { [...document.querySelectorAll('[data-testid=plantation]')][0].querySelectorAll('button').forEach((b) => { if (b.textContent.includes('Campement')) b.click(); }); });
   await pause(900);
   const labelsCamp = await page.evaluate(() => [...document.querySelectorAll('[role=dialog] label')].map((l) => l.textContent.replace(/\*/g, '').trim()));
   verifier(labelsCamp.includes('Localisation'), 'Campement : champ localisation présent');
+  verifier(!labelsCamp.some((l) => l.includes('Superficie')), 'Campement : plus de champ superficie (calculée à partir des blocs)');
   const plusieurs = await valeurListe('Responsable');
   verifier(plusieurs === '', 'Plusieurs responsables possibles : aucun choix automatique', JSON.stringify(plusieurs));
   await page.keyboard.press('Escape');

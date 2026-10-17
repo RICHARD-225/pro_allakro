@@ -152,7 +152,7 @@ export default function CampementDetailPage() {
             <Info label="Plantation"><Link to={`/plantations/${campement.plantation_id}`} className="text-forest-700 hover:underline">{campement.plantation_nom}</Link></Info>
             <Info label="Responsable">{campement.responsable_nom || '—'}</Info>
             <Info label="Localisation">{campement.localisation || '—'}</Info>
-            <Info label="Superficie">{Number(campement.superficie) > 0 ? <span className="tabular-nums">{formatNumber(campement.superficie)} ha</span> : '—'}</Info>
+            <Info label="Superficie (somme des blocs)">{Number(campement.superficie) > 0 ? <span className="tabular-nums">{formatNumber(campement.superficie)} ha</span> : '—'}</Info>
             <Info label="Statut"><Badge status={campement.actif ? 'active' : 'inactive'}>{campement.actif ? 'Actif' : 'Inactif'}</Badge></Info>
             <Info label="Créé le"><span className="tabular-nums">{formatDate(campement.created_at)}</span></Info>
           </div>

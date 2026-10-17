@@ -63,6 +63,29 @@ class SalairesTests(ApiTestCase):
         self.assertEqual((paiement['beneficiaire_id'], paiement['via_chef'], paiement['mode']), (self.ids[3], False, 'INDIVIDUEL'))
         self.assertEqual(self.get(f'salaires/{self.salaire_seul.pk}/')['statut'], 'PAYEE')
 
+    def test_remuneration_soldee_quitte_la_liste_et_revient_si_le_paiement_est_annule(self):
+        """Entièrement payée, une rémunération passe dans « Paiements effectués » ; un paiement annulé la ramène dans la liste."""
+        def ids(url):
+            return {r['id'] for r in self.get(url)}
+        liste = 'salaires/?masquer_soldees=true'
+        self.assertIn(self.salaire_seul.pk, ids(liste))
+        paiement = self.payer(self.salaire_seul, 20000)  # soldée
+        self.assertNotIn(self.salaire_seul.pk, ids(liste))
+        self.assertIn(self.salaire_equipe.pk, ids(liste))  # non payée : reste
+        # Sans le paramètre, ou avec le statut « Payé » : la rémunération soldée reste consultable
+        self.assertIn(self.salaire_seul.pk, ids('salaires/'))
+        self.assertIn(self.salaire_seul.pk, ids('salaires/?statut=PAYEE'))
+        # Les indicateurs portent sur toutes les rémunérations, masquées ou non
+        self.assertEqual(self.get('salaires/totaux/?masquer_soldees=true')['paye'], self.get('salaires/totaux/')['paye'])
+        self.assertEqual(self.get('salaires/totaux/?masquer_soldees=true')['paye'], 20000.0)
+        # Un paiement partiel ne la fait pas quitter la liste
+        self.payer(self.salaire_equipe, 1000)
+        self.assertIn(self.salaire_equipe.pk, ids(liste))
+        # Le paiement du paiement soldé est annulé : la rémunération revient dans la liste
+        self.post(f"paiements-salaire/{paiement['id']}/annuler/", {'motif': 'Erreur de saisie'}, status=200)
+        self.assertIn(self.salaire_seul.pk, ids(liste))
+        self.assertEqual(self.get(f'salaires/{self.salaire_seul.pk}/')['statut'], 'NON_PAYEE')
+
     def test_chaque_paiement_cree_une_seule_depense(self):
         paiement = self.payer(self.salaire_seul, 5000)
         depense = Depense.objects.get(pk=paiement['depense_id'])
